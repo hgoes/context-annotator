@@ -83,10 +83,14 @@ class Display(FigureCanvas):
         self.plot.get_xaxis().set_major_locator(MinuteLocator())
         self.plot.plot_date(src.getX(),src.getY(),'-')
         self.spanner = self.plot.axvspan(xb[0],xb[1],alpha=0.5)
+        self.ctx_spanners = []
+        for ctxd in par.contexts:
+            spans = []
+            for (start,end) in ctxd.entries:
+                spans.append(self.plot.axvspan(start,end,alpha=0.3,color=ctxd.color))
+            self.ctx_spanners.append(spans)
         FigureCanvas.__init__(self,self.figure)
         self.mpl_connect('button_press_event',self.on_click)
-        self.mpl_connect('key_press_event',self.on_key)
-        #self.set_size_request(3000,500)
     def update_range(self,min,max):
         self.plot.set_xlim(min,max)
         self.draw_idle()
@@ -103,16 +107,14 @@ class Display(FigureCanvas):
                 self.click_handler.set_boundl(event.xdata)
             elif event.button == 3:
                 self.click_handler.set_boundr(event.xdata)
-    def on_key(self,event):
-        if event.key == '+':
-            self.click_handler.bigger()
-        elif event.key == '-':
-            self.click_handler.smaller()
 
 class CtxAnnotator(gtk.VBox):
     def __init__(self):
         self.policy = ScaleDisplayPolicy(10000,150)
         self.displays = []
+        self.contexts = []
+        self.context_colors = ['red','green','yellow']
+        
         self.scalel = gtk.HScale()
         self.scaler = gtk.HScale()
         self.adjl = gtk.Adjustment()
@@ -128,6 +130,7 @@ class CtxAnnotator(gtk.VBox):
         self.scalel.connect("value-changed",self.update_spanners)
         self.scaler.connect("value-changed",self.update_spanners)
         self.display_box = gtk.VBox()
+        self.context_box = gtk.HBox()
 
         scr_win = gtk.ScrolledWindow()
         scr_win.add_with_viewport(self.display_box)
@@ -137,7 +140,14 @@ class CtxAnnotator(gtk.VBox):
         self.pack_start(scr_win,expand=True,fill=True)
         self.pack_end(self.scaler,expand=False,fill=True)
         self.pack_end(self.scalel,expand=False,fill=True)
-        self.pack_end(ContextButton("Hello"),expand=False,fill=False)
+        self.pack_end(self.context_box,expand=False,fill=True)
+        self.connect('key-press-event',self.on_key)
+    def on_key(self,wid,ev):
+        if ev.string is '+':
+            self.bigger()
+        elif ev.string is '-':
+            self.smaller()
+        
     def update_spanners(self,obj):
         for d in self.displays:
             d.update_spanner(self.adjl.get_value(),self.adjr.get_value())
@@ -190,6 +200,24 @@ class CtxAnnotator(gtk.VBox):
         self.displays.append(disp)
         self.display_box.pack_start(disp,expand=True,fill=True)
         self.recalculate()
+    def add_context(self,name):
+        found_color = None
+        for col in self.context_colors:
+            avail = True
+            for ctx in self.contexts:
+                if ctx.color == col:
+                    avail = False
+                    break
+            if avail:
+                found_color = col
+                break
+        if found_color == None:
+            print "HALP! I CAN'T HAZ COLOR!"
+            return
+        descr = ContextDescription(name,found_color)
+        but = ContextButton(descr)
+        self.context_box.pack_start(but,expand=False,fill=True)
+        self.contexts.append(descr)
 
 def scale_display(obj,value):
     if value == 0:
@@ -222,25 +250,37 @@ class ScaleDisplayPolicy:
         height = self.base_height*self.scales[self.cury]
         return (int(width),int(height))
 
-class ContextButton(gtk.Button):
-    def __init__(self,name):
-        gtk.Button.__init__(self)
-        #lbl = gtk.Label()
-        #lbl.set_markup("<span bgcolor=\"red\">"+name+"</span>")
-        #self.set_label(lbl)
+class ContextButton(gtk.HBox):
+    def __init__(self,descr):
+        gtk.HBox.__init__(self)
+        add_button = gtk.Button("")
+        add_button.get_child().set_markup("<span bgcolor=\""+descr.color+"\">"+descr.name+"</span>")
+        rem_button = gtk.Button(stock='gtk-delete')
+        self.pack_start(add_button,expand=True,fill=True)
+        self.pack_start(rem_button,expand=False,fill=True)
+
+class ContextDescription:
+    def __init__(self,name,color):
+        self.name = name
+        self.color = color
+        self.entries = []
+    def add_entry(self,start,end):
+        self.entries.append((start,end))
 
 if __name__=="__main__":
     win = gtk.Window()
     win.connect("destroy", lambda x: gtk.main_quit())
+
     win.set_default_size(400,300)
     win.set_title("Context Annotator")
     
     box = CtxAnnotator()
-    box.add_source(MovementSource("movement.log"))
+    box.add_source(MovementSource("examples/movement.log"))
     cur = datetime.datetime(2009,6,3,11,48,0)
 
-    box.add_source(WaveSource("01 - Elvenpath.wav",cur))
-    
+    box.add_source(WaveSource("examples/01 - Elvenpath.wav",cur))
+    box.add_context("Blub")
+    box.add_context("Blah")
     win.add(box)
 
     win.show_all()
