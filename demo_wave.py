@@ -1,6 +1,5 @@
 import numpy as np
 #import matplotlib.pyplot as plt
-import wave
 import gtk
 import datetime
 from matplotlib.figure import Figure
@@ -11,65 +10,7 @@ from matplotlib.dates import date2num,num2date,MinuteLocator
 from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg as FigureCanvas
 #from matplotlib.backends.backend_gtkcairo import FigureCanvasGTKCairo as FigureCanvas
 
-
-class WaveSource:
-    def __init__(self,fn,offset=datetime.date.min):
-        wav_obj = wave.open(fn,'r')
-        (chans,sampwidth,framerate,nframes,comptype,compname) = wav_obj.getparams()
-        if sampwidth == 2:
-            tp = np.dtype(np.int16)
-        if sampwidth == 4:
-            tp = np.dtype(np.int32)
-        self.frames = np.frombuffer(buffer = wav_obj.readframes(nframes),dtype = tp)
-        self.samplerate = framerate
-        self.channels = chans
-        self.nframes = nframes
-        self.offset = offset
-    def getY(self,sampling=10000,chan=0):
-        return self.frames[chan::2*sampling]
-    def getX(self,sampling=10000):
-        #numd = date2num(self.offset)
-        return np.fromiter([ date2num(self.offset + datetime.timedelta(seconds = float(i)/self.samplerate))
-                             for i in range(0,self.nframes,sampling)],dtype=np.dtype(np.float))
-    def xBounds(self):
-        d1 = self.offset
-        d2 = d1 + datetime.timedelta(seconds = float(self.nframes)/self.samplerate)
-        return (date2num(d1),date2num(d2))
-    def yBounds(self,chan=0):
-        return (self.frames[chan::2].min(),self.frames[chan::2].max())
-
-class MovementSource:
-    def __init__(self,fn):
-        f = open(fn,'r')
-        lines = f.readlines()
-        sz = len(lines)
-        #print sz
-        self.timedata = np.empty(sz,np.dtype(np.float))
-        self.xdata = np.empty((sz,6),np.dtype(np.float))
-        #self.xdata = np.empty(sz,np.dtype(np.float))
-        for i in range(sz):
-            (timestamp,ms,xv,xd,yv,yd,zv,zd) = lines[i].split()
-            self.timedata[i] = date2num(datetime.datetime.fromtimestamp(int(timestamp))
-                                        + datetime.timedelta(seconds = float("0."+ms)))
-            #print self.timedata[i]
-            #self.xdata[i] = float(xv)
-            self.xdata[i,0] = float(xv)
-            self.xdata[i,1] = float(xd)
-            self.xdata[i,2] = float(yv)
-            self.xdata[i,3] = float(yd)
-            self.xdata[i,4] = float(zv)
-            self.xdata[i,5] = float(zd)
-    def getX(self):
-        return self.timedata
-    def getY(self):
-        return self.xdata
-    def xBounds(self):
-        sz = self.timedata.size
-        d1 = self.timedata[0]
-        d2 = self.timedata[sz-1]
-        return (d1,d2)
-    def yBounds(self):
-        return (self.xdata.min(),self.xdata.max())   
+from sources import *
 
 class Display(FigureCanvas):
     def __init__(self,par,src):
@@ -83,12 +24,9 @@ class Display(FigureCanvas):
         self.plot.get_xaxis().set_major_locator(MinuteLocator())
         self.plot.plot_date(src.getX(),src.getY(),'-')
         self.spanner = self.plot.axvspan(xb[0],xb[1],alpha=0.5)
-        self.ctx_spanners = []
+        self.ctx_spanners = dict()
         for ctxd in par.contexts:
-            spans = []
-            for (start,end) in ctxd.entries:
-                spans.append(self.plot.axvspan(start,end,alpha=0.3,color=ctxd.color))
-            self.ctx_spanners.append(spans)
+            self.notice_context(ctxd)
         FigureCanvas.__init__(self,self.figure)
         self.mpl_connect('button_press_event',self.on_click)
     def update_range(self,min,max):
@@ -107,13 +45,28 @@ class Display(FigureCanvas):
                 self.click_handler.set_boundl(event.xdata)
             elif event.button == 3:
                 self.click_handler.set_boundr(event.xdata)
+    def notice_context(self,descr):
+        spans = []
+        for (start,end) in descr.entries:
+            spans.append(self.plot.axvspan(start,end,alpha=0.3,facecolor=descr.color))
+        self.ctx_spanners[descr.name] = spans
+    def notice_annotation(self,ctx,col,start,end):
+        spans = self.ctx_spanners[ctx]
+        spans.append(self.plot.axvspan(start,end,alpha=0.3,facecolor=col))
+        self.draw_idle()
+    def notice_context_removal(self,ctx):
+        ctxd = self.ctx_spanners[ctx]
+        for spanner in ctxd:
+            spanner.remove()
+        del self.ctx_spanners[ctx]
+        self.draw_idle()
 
 class CtxAnnotator(gtk.VBox):
     def __init__(self):
         self.policy = ScaleDisplayPolicy(10000,150)
         self.displays = []
-        self.contexts = []
-        self.context_colors = ['red','green','yellow']
+        self.contexts = dict()
+        self.context_colors = ['red','green','yellow','orange']
         
         self.scalel = gtk.HScale()
         self.scaler = gtk.HScale()
@@ -131,6 +84,9 @@ class CtxAnnotator(gtk.VBox):
         self.scaler.connect("value-changed",self.update_spanners)
         self.display_box = gtk.VBox()
         self.context_box = gtk.HBox()
+        add_button = gtk.Button(stock='gtk-add')
+        add_button.connect('clicked',lambda but: self.create_context())
+        self.context_box.pack_start(add_button,expand=False,fill=True)
 
         scr_win = gtk.ScrolledWindow()
         scr_win.add_with_viewport(self.display_box)
@@ -143,6 +99,7 @@ class CtxAnnotator(gtk.VBox):
         self.pack_end(self.context_box,expand=False,fill=True)
         self.connect('key-press-event',self.on_key)
     def on_key(self,wid,ev):
+        print ev.string
         if ev.string is '+':
             self.bigger()
         elif ev.string is '-':
@@ -204,7 +161,7 @@ class CtxAnnotator(gtk.VBox):
         found_color = None
         for col in self.context_colors:
             avail = True
-            for ctx in self.contexts:
+            for (ctx,but) in self.contexts.values():
                 if ctx.color == col:
                     avail = False
                     break
@@ -215,9 +172,38 @@ class CtxAnnotator(gtk.VBox):
             print "HALP! I CAN'T HAZ COLOR!"
             return
         descr = ContextDescription(name,found_color)
-        but = ContextButton(descr)
+        but = ContextButton(descr,self)
+        but.show_all()
         self.context_box.pack_start(but,expand=False,fill=True)
-        self.contexts.append(descr)
+        self.contexts[descr.name]=(descr,but)
+        for d in self.displays:
+            d.notice_context(descr)
+    def remove_context(self,name):
+        for d in self.displays:
+            d.notice_context_removal(name)
+        (descr,but) = self.contexts[name]
+        self.context_box.remove(but)
+        del self.contexts[name]
+    def create_context(self):
+        dialog = gtk.MessageDialog(None,
+                                   gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                                   gtk.MESSAGE_QUESTION,
+                                   gtk.BUTTONS_OK, None)
+        dialog.set_markup("Please enter the <b>name</b> of the context")
+        entry = gtk.Entry()
+        entry.connect("activate", lambda wid: dialog.response(gtk.RESPONSE_OK))
+        dialog.vbox.pack_end(entry,expand=True,fill=True)
+        dialog.show_all()
+        dialog.run()
+        self.add_context(entry.get_text())
+        dialog.destroy()
+    def create_annotation(self,name):
+        start = self.adjl.value
+        end = self.adjr.value
+        (descr,but) = self.contexts[name]
+        descr.entries.append((start,end))
+        for d in self.displays:
+            d.notice_annotation(name,descr.color,start,end)
 
 def scale_display(obj,value):
     if value == 0:
@@ -251,13 +237,15 @@ class ScaleDisplayPolicy:
         return (int(width),int(height))
 
 class ContextButton(gtk.HBox):
-    def __init__(self,descr):
+    def __init__(self,descr,par):
         gtk.HBox.__init__(self)
         add_button = gtk.Button("")
         add_button.get_child().set_markup("<span bgcolor=\""+descr.color+"\">"+descr.name+"</span>")
         rem_button = gtk.Button(stock='gtk-delete')
         self.pack_start(add_button,expand=True,fill=True)
         self.pack_start(rem_button,expand=False,fill=True)
+        rem_button.connect('clicked',lambda but: par.remove_context(descr.name))
+        add_button.connect('clicked',lambda but: par.create_annotation(descr.name))
 
 class ContextDescription:
     def __init__(self,name,color):
