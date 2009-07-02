@@ -25,10 +25,10 @@ class Display(FigureCanvas):
         self.plot.plot_date(src.getX(),src.getY(),'-')
         self.spanner = self.plot.axvspan(xb[0],xb[1],alpha=0.5)
         self.ctx_spanners = dict()
-        for ctxd in par.contexts:
-            self.notice_context(ctxd)
         FigureCanvas.__init__(self,self.figure)
-        self.mpl_connect('button_press_event',self.on_click)
+        self.mpl_connect('button_press_event',self.on_press)
+        self.mpl_connect('button_release_event',self.on_release)
+        self.mpl_connect('motion_notify_event',self.on_move)
     def update_range(self,min,max):
         self.plot.set_xlim(min,max)
         self.draw_idle()
@@ -39,12 +39,19 @@ class Display(FigureCanvas):
         if vall < valr:
             self.spanner = self.plot.axvspan(vall,valr,alpha=0.5)
         self.draw_idle()
-    def on_click(self,event):
+    def on_press(self,event):
         if event.xdata != None and event.ydata != None:
             if event.button == 1:
-                self.click_handler.set_boundl(event.xdata)
+                self.click_handler.bound_change_start(event.xdata)
             elif event.button == 3:
-                self.click_handler.set_boundr(event.xdata)
+                self.click_handler.select(event.xdata,event.guiEvent.get_time())
+    def on_release(self,event):
+        if event.xdata != None and event.ydata != None:
+            if event.button == 1:
+                self.click_handler.bound_change_end(event.xdata)
+    def on_move(self,event):
+        if event.xdata != None and event.ydata != None:
+            self.click_handler.bound_change_update(event.xdata)
     def notice_context(self,descr):
         spans = []
         for (start,end) in descr.entries:
@@ -60,6 +67,48 @@ class Display(FigureCanvas):
             spanner.remove()
         del self.ctx_spanners[ctx]
         self.draw_idle()
+    def notice_annotation_removal(self,ctx,pos):
+        self.ctx_spanners[ctx][pos].remove()
+        del self.ctx_spanners[ctx][pos]
+        self.draw_idle()
+
+class InputState:
+    def __init__(self,par):
+        self.bounds = None
+        self.tmpl = 0.0
+        self.tmpr = 0.0
+        self.par = par
+        self.bound_change = False
+        self.selection = None
+    def propagate_marker(self):
+        for d in self.par.displays:
+            d.update_spanner(self.tmpl,self.tmpr)
+    def bound_change_start(self,loc):
+        self.tmpl = loc
+        self.tmpr = loc
+        self.propagate_marker()
+        self.bound_change = True
+    def bound_change_update(self,loc):
+        if self.bound_change:
+            self.tmpr = loc
+            self.propagate_marker()
+    def bound_change_end(self,loc):
+        if self.bound_change:
+            self.tmpr = loc
+            if self.tmpl < self.tmpr:
+                self.bounds = (self.tmpl,self.tmpr)
+            else:
+                self.bounds = None
+            self.propagate_marker()
+            self.bound_change = False
+    def select(self,loc,time):
+        if self.bounds != None:
+            if loc >= self.bounds[0] and loc <= self.bounds[1]:
+                self.selection = True
+                self.par.notify_select(time)
+                return
+        self.selection = self.par.find_annotation(loc)
+        self.par.notify_select(time)
 
 class CtxAnnotator(gtk.VBox):
     def __init__(self):
@@ -68,22 +117,9 @@ class CtxAnnotator(gtk.VBox):
         self.contexts = dict()
         self.context_colors = ['red','green','yellow','orange']
         
-        self.scalel = gtk.HScale()
-        self.scaler = gtk.HScale()
-        self.adjl = gtk.Adjustment()
-        self.adjr = gtk.Adjustment()
-
-        self.scalel.set_adjustment(self.adjl)
-        self.scaler.set_adjustment(self.adjr)
-
-        self.scalel.set_digits(10)
-        self.scaler.set_digits(10)
-        self.scalel.connect("format-value",scale_display)
-        self.scaler.connect("format-value",scale_display)
-        self.scalel.connect("value-changed",self.update_spanners)
-        self.scaler.connect("value-changed",self.update_spanners)
         self.display_box = gtk.VBox()
         self.context_box = gtk.HBox()
+        self.input_state = InputState(self)
         add_button = gtk.Button(stock='gtk-add')
         add_button.connect('clicked',lambda but: self.create_context())
         self.context_box.pack_start(add_button,expand=False,fill=True)
@@ -94,26 +130,20 @@ class CtxAnnotator(gtk.VBox):
 
         gtk.VBox.__init__(self)
         self.pack_start(scr_win,expand=True,fill=True)
-        self.pack_end(self.scaler,expand=False,fill=True)
-        self.pack_end(self.scalel,expand=False,fill=True)
         self.pack_end(self.context_box,expand=False,fill=True)
         self.connect('key-press-event',self.on_key)
     def on_key(self,wid,ev):
-        print ev.string
         if ev.string is '+':
             self.bigger()
         elif ev.string is '-':
             self.smaller()
-        
-    def update_spanners(self,obj):
-        for d in self.displays:
-            d.update_spanner(self.adjl.get_value(),self.adjr.get_value())
-    def set_boundl(self,val):
-        self.adjl.value = val
-        self.adjl.value_changed()
-    def set_boundr(self,val):
-        self.adjr.value = val
-        self.adjr.value_changed()
+    def find_annotation(self,x):
+        for (ctx,but) in self.contexts.values():
+            ind = 0
+            for ind in range(len(ctx.entries)):
+                if ctx.entries[ind][0] <= x and ctx.entries[ind][1] >= x:
+                    return (ctx.name,ind)
+        return None
     def bigger(self):
         self.policy.biggerx()
         self.update_zoom()
@@ -134,26 +164,15 @@ class CtxAnnotator(gtk.VBox):
                 xmin = min
             if xmax is None or max > xmax:
                 xmax = max
-        self.xmin = xmin
-        self.xmax = xmax
         if not xmin is None:
-            self.adjl.lower = xmin
-            self.adjr.lower = xmin
-            self.adjl.upper = xmax
-            self.adjr.upper = xmax
-            self.adjl.value = xmin
-            self.adjr.value = xmax
-
-            self.adjl.changed()
-            self.adjr.changed()
-            self.adjl.value_changed()
-            self.adjr.value_changed()
-
             for d in self.displays:
                 d.update_range(xmin,xmax)
+            self.input_state.propagate_marker()
 
     def add_source(self,src):
-        disp = Display(self,src)
+        disp = Display(self.input_state,src)
+        for ctx in self.contexts:
+            disp.notice_context(ctx)
         self.displays.append(disp)
         self.display_box.pack_start(disp,expand=True,fill=True)
         self.recalculate()
@@ -198,12 +217,27 @@ class CtxAnnotator(gtk.VBox):
         self.add_context(entry.get_text())
         dialog.destroy()
     def create_annotation(self,name):
-        start = self.adjl.value
-        end = self.adjr.value
-        (descr,but) = self.contexts[name]
-        descr.entries.append((start,end))
+        if self.input_state.bounds != None:
+            (start,end) = self.input_state.bounds
+            (descr,but) = self.contexts[name]
+            descr.entries.append((start,end))
+            for d in self.displays:
+                d.notice_annotation(name,descr.color,start,end)
+    def notify_select(self,time):
+        if self.input_state.selection == None:
+            pass
+        elif self.input_state.selection == True:
+            menu = SelectionMenu(self)
+            menu.show_all()
+            menu.popup(None,None,None,3,time)
+        else:
+            menu = AnnotationMenu(self)
+            menu.show_all()
+            menu.popup(None,None,None,3,time)
+    def remove_annotation(self,name,pos):
+        del self.contexts[name][0].entries[pos]
         for d in self.displays:
-            d.notice_annotation(name,descr.color,start,end)
+            d.notice_annotation_removal(name,pos)
 
 def scale_display(obj,value):
     if value == 0:
@@ -254,6 +288,37 @@ class ContextDescription:
         self.entries = []
     def add_entry(self,start,end):
         self.entries.append((start,end))
+
+class SelectionMenu(gtk.Menu):
+    def __init__(self,par):
+        gtk.Menu.__init__(self)
+        ann = gtk.MenuItem(label="Annotate")
+        sub_ann = gtk.Menu()
+        ann.set_submenu(sub_ann)
+        for (ctx,but) in par.contexts.values():
+            it = gtk.ImageMenuItem("")
+            img = gtk.Image()
+            img.set_from_stock(gtk.STOCK_BOLD,gtk.ICON_SIZE_MENU)
+            it.set_image(img)
+            it.get_child().set_markup("<span bgcolor=\""+ctx.color+"\">"+ctx.name+"</span>")
+            it.connect('activate',lambda w,str: par.create_annotation(str),ctx.name)
+            sub_ann.append(it)
+        sub_ann.append(gtk.SeparatorMenuItem())
+        new_it = gtk.ImageMenuItem("New context...")
+        new_img = gtk.Image()
+        new_img.set_from_stock(gtk.STOCK_ADD,gtk.ICON_SIZE_MENU)
+        new_it.set_image(new_img)
+        new_it.connect('activate',lambda w: par.create_context())
+        sub_ann.append(new_it)
+        self.append(ann)
+
+class AnnotationMenu(gtk.Menu):
+    def __init__(self,par):
+        gtk.Menu.__init__(self)
+        it = gtk.ImageMenuItem(gtk.STOCK_DELETE)
+        sel = par.input_state.selection
+        it.connect('activate',lambda w,name,pos: par.remove_annotation(name,pos),sel[0],sel[1])
+        self.append(it)
 
 if __name__=="__main__":
     win = gtk.Window()
