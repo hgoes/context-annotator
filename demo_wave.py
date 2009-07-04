@@ -2,6 +2,8 @@ import numpy as np
 #import matplotlib.pyplot as plt
 import gtk
 import datetime
+import time
+import calendar
 from matplotlib.figure import Figure
 from matplotlib.dates import date2num,num2date,MinuteLocator
 
@@ -18,10 +20,9 @@ class Display(FigureCanvas):
         self.click_handler = par
         xb = src.xBounds()
         yb = src.yBounds()
-        #print xb
         self.figure = Figure(figsize=(5,4),dpi=100)
         self.plot = self.figure.add_subplot(111,xbound=xb,ybound=yb,autoscale_on=False)
-        self.plot.get_xaxis().set_major_locator(MinuteLocator())
+        self.plot.get_xaxis().set_major_locator(MinuteLocator(tz=UTC()))
         self.plot.plot_date(src.getX(),src.getY(),'-')
         self.spanner = self.plot.axvspan(xb[0],xb[1],alpha=0.5)
         self.ctx_spanners = dict()
@@ -36,7 +37,7 @@ class Display(FigureCanvas):
         if self.spanner != None:
             self.spanner.remove()
             self.spanner = None
-        if vall < valr:
+        if vall != valr:
             self.spanner = self.plot.axvspan(vall,valr,alpha=0.5)
         self.draw_idle()
     def on_press(self,event):
@@ -97,6 +98,8 @@ class InputState:
             self.tmpr = loc
             if self.tmpl < self.tmpr:
                 self.bounds = (self.tmpl,self.tmpr)
+            elif self.tmpl > self.tmpr:
+                self.bounds = (self.tmpr,self.tmpl)
             else:
                 self.bounds = None
             self.propagate_marker()
@@ -151,7 +154,8 @@ class CtxAnnotator(gtk.VBox):
         self.policy.smallerx()
         self.update_zoom()
     def update_zoom(self):
-        (w,h) = self.policy.display_sizes(num2date(self.xmax)-num2date(self.xmin))
+        utc = UTC()
+        (w,h) = self.policy.display_sizes(num2date(self.xmax,tz=utc)-num2date(self.xmin,tz=utc))
         for d in self.displays:
             d.set_size_request(w,h)
             
@@ -164,6 +168,8 @@ class CtxAnnotator(gtk.VBox):
                 xmin = min
             if xmax is None or max > xmax:
                 xmax = max
+        self.xmin = xmin
+        self.xmax = xmax
         if not xmin is None:
             for d in self.displays:
                 d.update_range(xmin,xmax)
@@ -197,6 +203,7 @@ class CtxAnnotator(gtk.VBox):
         self.contexts[descr.name]=(descr,but)
         for d in self.displays:
             d.notice_context(descr)
+        return descr
     def remove_context(self,name):
         for d in self.displays:
             d.notice_context_removal(name)
@@ -216,13 +223,20 @@ class CtxAnnotator(gtk.VBox):
         dialog.run()
         self.add_context(entry.get_text())
         dialog.destroy()
+    def add_annotation(self,name,start,end):
+        if not name in self.contexts:
+            print "New Context"
+            descr = self.add_context(name)
+            for d in self.displays:
+                d.notice_context(descr)
+        (descr,but) = self.contexts[name]
+        descr.entries.append((start,end))
+        for d in self.displays:
+            d.notice_annotation(name,descr.color,start,end)
     def create_annotation(self,name):
         if self.input_state.bounds != None:
             (start,end) = self.input_state.bounds
-            (descr,but) = self.contexts[name]
-            descr.entries.append((start,end))
-            for d in self.displays:
-                d.notice_annotation(name,descr.color,start,end)
+            self.add_annotation(name,start,end)
     def notify_select(self,time):
         if self.input_state.selection == None:
             pass
@@ -238,6 +252,29 @@ class CtxAnnotator(gtk.VBox):
         del self.contexts[name][0].entries[pos]
         for d in self.displays:
             d.notice_annotation_removal(name,pos)
+    def write_out(self,fn):
+        annotations = []
+        for (ctx,but) in self.contexts.values():
+            for (begin,end) in ctx.entries:
+                annotations.append((ctx.name,begin,end))
+        annotations.sort(key=lambda obj: obj[1])
+        with open(fn,'w') as h:
+            utc = UTC()
+            for (name,begin,end) in annotations:
+                print num2date(begin,utc)
+                h.write(name+" "+str(calendar.timegm(num2date(begin,utc).utctimetuple()))+" "
+                        +str(calendar.timegm(num2date(end,utc).utctimetuple()))+"\n")
+    def read_in(self,fn):
+        for ctx in self.contexts.keys():
+            self.remove_context(ctx)
+        with open(fn,'r') as h:
+            for ln in h:
+                (name,start,end) = ln.split()
+                print datetime.datetime.utcfromtimestamp(float(start))
+                self.add_annotation(name,
+                                    date2num(datetime.datetime.utcfromtimestamp(float(start))),
+                                    date2num(datetime.datetime.utcfromtimestamp(float(end))))
+        
 
 def scale_display(obj,value):
     if value == 0:
@@ -320,21 +357,77 @@ class AnnotationMenu(gtk.Menu):
         it.connect('activate',lambda w,name,pos: par.remove_annotation(name,pos),sel[0],sel[1])
         self.append(it)
 
-if __name__=="__main__":
-    win = gtk.Window()
-    win.connect("destroy", lambda x: gtk.main_quit())
+class Application(gtk.Window):
+    def __init__(self):
+        gtk.Window.__init__(self)
+        self.connect("destroy", lambda x: gtk.main_quit())
 
-    win.set_default_size(400,300)
-    win.set_title("Context Annotator")
+        self.set_default_size(400,300)
+        self.set_title("Context Annotator")
     
-    box = CtxAnnotator()
-    box.add_source(MovementSource("examples/movement.log"))
-    cur = datetime.datetime(2009,6,3,11,48,0)
+        bar = gtk.MenuBar()
+        file_item = gtk.MenuItem(label='Annotation')
+        bar.append(file_item)
+        file_menu = gtk.Menu()
+        file_item.set_submenu(file_menu)
+        open_item = gtk.ImageMenuItem(gtk.STOCK_OPEN)
+        open_item.connect('activate',lambda x: self.load())
+        save_item = gtk.ImageMenuItem(gtk.STOCK_SAVE)
+        save_item.connect('activate',lambda x: self.save())
+        file_menu.append(open_item)
+        file_menu.append(save_item)
+    
+        layout = gtk.VBox()
+        layout.pack_start(bar,expand=False,fill=True)
 
-    box.add_source(WaveSource("examples/01 - Elvenpath.wav",cur))
-    box.add_context("Blub")
-    box.add_context("Blah")
-    win.add(box)
+        self.add(layout)
+        
+        self.annotator = CtxAnnotator()
+        layout.pack_start(self.annotator,expand=True,fill=True)
+        self.annotator.add_source(MovementSource("examples/movement.log"))
+        cur = datetime.datetime(2009,6,3,9,48,0)
 
-    win.show_all()
-    gtk.main()
+        self.annotator.add_source(WaveSource("examples/01 - Elvenpath.wav",cur))
+        self.annotator.add_context("Blub")
+        self.annotator.add_context("Blah")
+    def save(self):
+        dialog = gtk.FileChooserDialog(title="Save annotation",
+                                       action=gtk.FILE_CHOOSER_ACTION_SAVE,
+                                       buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            self.annotator.write_out(dialog.get_filename())
+        elif response == gtk.RESPONSE_CANCEL:
+            pass
+        dialog.destroy()
+    def load(self):
+        dialog = gtk.FileChooserDialog(title="Save annotation",
+                                       action=gtk.FILE_CHOOSER_ACTION_OPEN,
+                                       buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            self.annotator.read_in(dialog.get_filename())
+        elif response == gtk.RESPONSE_CANCEL:
+            pass
+        dialog.destroy()
+    def run(self):
+        self.show_all()
+        gtk.main()
+
+# Note to python devs: You suck!
+class UTC(datetime.tzinfo):
+    """UTC"""
+
+    def utcoffset(self, dt):
+        return datetime.timedelta(0)
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return datetime.timedelta(0)
+
+
+if __name__=="__main__":
+    app = Application()
+    app.run()

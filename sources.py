@@ -45,7 +45,7 @@ class MovementSource:
         #self.xdata = np.empty(sz,np.dtype(np.float))
         for i in range(sz):
             (timestamp,ms,xv,xd,yv,yd,zv,zd) = lines[i].split()
-            self.timedata[i] = date2num(datetime.datetime.fromtimestamp(int(timestamp))
+            self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(int(timestamp))
                                         + datetime.timedelta(seconds = float("0."+ms)))
             #print self.timedata[i]
             #self.xdata[i] = float(xv)
