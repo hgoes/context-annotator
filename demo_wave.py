@@ -4,6 +4,7 @@ import gtk
 import datetime
 import time
 import calendar
+import scikits.audiolab
 from matplotlib.figure import Figure
 from matplotlib.dates import date2num,num2date,MinuteLocator
 
@@ -45,7 +46,7 @@ class Display(FigureCanvas):
             if event.button == 1:
                 self.click_handler.bound_change_start(event.xdata)
             elif event.button == 3:
-                self.click_handler.select(event.xdata,event.guiEvent.get_time())
+                self.click_handler.select(event.xdata,event.guiEvent.get_time(),self)
     def on_release(self,event):
         if event.xdata != None and event.ydata != None:
             if event.button == 1:
@@ -104,14 +105,14 @@ class InputState:
                 self.bounds = None
             self.propagate_marker()
             self.bound_change = False
-    def select(self,loc,time):
+    def select(self,loc,time,display):
         if self.bounds != None:
             if loc >= self.bounds[0] and loc <= self.bounds[1]:
                 self.selection = True
-                self.par.notify_select(time)
+                self.par.notify_select(time,display)
                 return
         self.selection = self.par.find_annotation(loc)
-        self.par.notify_select(time)
+        self.par.notify_select(time,display)
 
 class CtxAnnotator(gtk.VBox):
     def __init__(self):
@@ -242,11 +243,11 @@ class CtxAnnotator(gtk.VBox):
         if self.input_state.bounds != None:
             (start,end) = self.input_state.bounds
             self.add_annotation(name,start,end)
-    def notify_select(self,time):
+    def notify_select(self,time,display):
         if self.input_state.selection == None:
             pass
         elif self.input_state.selection == True:
-            menu = SelectionMenu(self)
+            menu = SelectionMenu(self,display)
             menu.show_all()
             menu.popup(None,None,None,3,time)
         else:
@@ -332,7 +333,7 @@ class ContextDescription:
         self.entries.append((start,end))
 
 class SelectionMenu(gtk.Menu):
-    def __init__(self,par):
+    def __init__(self,par,display):
         gtk.Menu.__init__(self)
         ann = gtk.MenuItem(label="Annotate")
         sub_ann = gtk.Menu()
@@ -353,6 +354,17 @@ class SelectionMenu(gtk.Menu):
         new_it.connect('activate',lambda w: par.create_context())
         sub_ann.append(new_it)
         self.append(ann)
+        if display.src.hasCapability("play"):
+            play_it = gtk.ImageMenuItem(stock_id=gtk.STOCK_MEDIA_PLAY)
+            (start,end) = par.input_state.bounds
+            play_it.connect('activate',self.play_annotation,
+                            display,
+                            num2date(start,UTC()),
+                            num2date(end,UTC()))
+            self.append(play_it)
+    def play_annotation(self,menu,display,start,end):
+        data = display.src.getPlayData(start,end)
+        scikits.audiolab.play(data[0],data[1])
 
 class AnnotationMenu(gtk.Menu):
     def __init__(self,par):
@@ -390,7 +402,7 @@ class Application(gtk.Window):
         self.annotator = CtxAnnotator()
         layout.pack_start(self.annotator,expand=True,fill=True)
         self.annotator.add_source(MovementSource("examples/movement.log"))
-        cur = datetime.datetime(2009,6,3,9,48,0)
+        cur = datetime.datetime(2009,6,3,9,48,0,0,UTC())
 
         self.annotator.add_source(WaveSource("examples/01 - Elvenpath.wav",cur))
     def save(self):
