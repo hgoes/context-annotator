@@ -404,7 +404,7 @@ class Application(gtk.Window):
         self.annotator.add_source(MovementSource("examples/movement.log"))
         cur = datetime.datetime(2009,6,3,9,48,0,0,UTC())
 
-        self.annotator.add_source(WaveSource("examples/01 - Elvenpath.wav",cur))
+        self.annotator.add_source(SoundSource("examples/01 - Elvenpath.wav",cur))
     def save(self):
         dialog = gtk.FileChooserDialog(title="Save annotation",
                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,

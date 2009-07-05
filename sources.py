@@ -5,27 +5,27 @@ import numpy as np
 import datetime
 from matplotlib.dates import date2num,num2date
 import wave
+from scikits.audiolab import Sndfile
 
-""" Provides audio level data from a wave source (filename: *.wav) """
+""" Provides audio level data from a sound source (everything that audiolab supports) """
 
-class WaveSource:
+class SoundSource:
     def __init__(self,fn,offset=datetime.date.min,chan=0):
-        wav_obj = wave.open(fn,'r')
-        (chans,sampwidth,framerate,nframes,comptype,compname) = wav_obj.getparams()
-        if sampwidth == 2:
-            tp = np.dtype(np.int16)
-        if sampwidth == 4:
-            tp = np.dtype(np.int32)
-        self.frames = np.frombuffer(buffer = wav_obj.readframes(nframes),dtype = tp)
-        self.samplerate = framerate
-        self.channels = chans
-        self.nframes = nframes
+        
+        file = Sndfile(fn)
+
+        self.nframes = file.nframes
+        self.channels = file.channels
+        self.samplerate = file.samplerate
+
+        self.frames = file.read_frames(file.nframes)
+        #print self.frames[::10000].T[0]
+        self.name = fn
         self.offset = offset
         self.channel = chan
-        self.samplewidth = sampwidth
-        self.name = fn
+
     def getY(self,sampling=10000):
-        return self.frames[self.channel::2*sampling]
+        return self.frames[::sampling,self.channel] #[...,self.channel]
     def getX(self,sampling=10000):
         #numd = date2num(self.offset)
         return np.fromiter([ date2num(self.offset + datetime.timedelta(seconds = float(i)/self.samplerate))
@@ -48,16 +48,7 @@ class WaveSource:
         rend = end - self.offset
         fstart = rstart.microseconds*0.000001 + rstart.seconds + rstart.days*24*3600
         fend = rend.microseconds*0.000001 + rend.seconds + rend.days*24*3600
-        if self.samplewidth == 2:
-            div = (1 << 16) - 1
-        elif self.samplewidth == 4:
-            div = (1 << 32) - 1
-        return (np.fromiter([ float(self.frames[i])/float(div)
-                              for i in range(int(self.channel+fstart*2*self.samplerate),
-                                             int(self.channel+fend*2*self.samplerate),2) ],
-                            dtype=np.dtype(np.float)),
-                self.samplerate)
-        
+        return (self.frames[int(fstart*self.samplerate):int(fend*self.samplerate)].T,self.samplerate)
 
 class MovementSource:
     def __init__(self,fn):
