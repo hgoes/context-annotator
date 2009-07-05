@@ -168,6 +168,12 @@ class CtxAnnotator(gtk.VBox):
                 xmin = min
             if xmax is None or max > xmax:
                 xmax = max
+        for (ctx,but) in self.contexts.values():
+            for (start,end) in ctx.entries:
+                if xmin is None or start < xmin:
+                    xmin = start
+                if xmax is None or end > xmax:
+                    xmax = end
         self.xmin = xmin
         self.xmax = xmax
         if not xmin is None:
@@ -195,7 +201,7 @@ class CtxAnnotator(gtk.VBox):
                 break
         if found_color == None:
             print "HALP! I CAN'T HAZ COLOR!"
-            return
+            return None
         descr = ContextDescription(name,found_color)
         but = ContextButton(descr,self)
         but.show_all()
@@ -225,7 +231,6 @@ class CtxAnnotator(gtk.VBox):
         dialog.destroy()
     def add_annotation(self,name,start,end):
         if not name in self.contexts:
-            print "New Context"
             descr = self.add_context(name)
             for d in self.displays:
                 d.notice_context(descr)
@@ -270,10 +275,10 @@ class CtxAnnotator(gtk.VBox):
         with open(fn,'r') as h:
             for ln in h:
                 (name,start,end) = ln.split()
-                print datetime.datetime.utcfromtimestamp(float(start))
                 self.add_annotation(name,
                                     date2num(datetime.datetime.utcfromtimestamp(float(start))),
                                     date2num(datetime.datetime.utcfromtimestamp(float(end))))
+            self.recalculate()
         
 
 def scale_display(obj,value):
@@ -388,8 +393,6 @@ class Application(gtk.Window):
         cur = datetime.datetime(2009,6,3,9,48,0)
 
         self.annotator.add_source(WaveSource("examples/01 - Elvenpath.wav",cur))
-        self.annotator.add_context("Blub")
-        self.annotator.add_context("Blah")
     def save(self):
         dialog = gtk.FileChooserDialog(title="Save annotation",
                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
@@ -401,7 +404,7 @@ class Application(gtk.Window):
             pass
         dialog.destroy()
     def load(self):
-        dialog = gtk.FileChooserDialog(title="Save annotation",
+        dialog = gtk.FileChooserDialog(title="Load annotation",
                                        action=gtk.FILE_CHOOSER_ACTION_OPEN,
                                        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
         response = dialog.run()
