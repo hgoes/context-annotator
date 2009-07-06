@@ -7,6 +7,9 @@ import calendar
 import scikits.audiolab
 from matplotlib.figure import Figure
 from matplotlib.dates import date2num,num2date,MinuteLocator
+import gettext
+
+gettext.install('context-annotator','po')
 
 # uncomment to select /GTK/GTKAgg/GTKCairo
 #from matplotlib.backends.backend_gtk import FigureCanvasGTK as FigureCanvas
@@ -222,7 +225,7 @@ class CtxAnnotator(gtk.VBox):
                                    gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                                    gtk.MESSAGE_QUESTION,
                                    gtk.BUTTONS_OK, None)
-        dialog.set_markup("Please enter the <b>name</b> of the context")
+        dialog.set_markup(_("Please enter the <b>name</b> of the context"))
         entry = gtk.Entry()
         entry.connect("activate", lambda wid: dialog.response(gtk.RESPONSE_OK))
         dialog.vbox.pack_end(entry,expand=True,fill=True)
@@ -335,7 +338,7 @@ class ContextDescription:
 class SelectionMenu(gtk.Menu):
     def __init__(self,par,display):
         gtk.Menu.__init__(self)
-        ann = gtk.MenuItem(label="Annotate")
+        ann = gtk.MenuItem(label=_("Annotate"))
         sub_ann = gtk.Menu()
         ann.set_submenu(sub_ann)
         for (ctx,but) in par.contexts.values():
@@ -347,7 +350,7 @@ class SelectionMenu(gtk.Menu):
             it.connect('activate',lambda w,str: par.create_annotation(str),ctx.name)
             sub_ann.append(it)
         sub_ann.append(gtk.SeparatorMenuItem())
-        new_it = gtk.ImageMenuItem("New context...")
+        new_it = gtk.ImageMenuItem(_("New context..."))
         new_img = gtk.Image()
         new_img.set_from_stock(gtk.STOCK_ADD,gtk.ICON_SIZE_MENU)
         new_it.set_image(new_img)
@@ -377,13 +380,15 @@ class AnnotationMenu(gtk.Menu):
 class Application(gtk.Window):
     def __init__(self):
         gtk.Window.__init__(self)
+        accel = gtk.AccelGroup()
+        self.add_accel_group(accel)
         self.connect("destroy", lambda x: gtk.main_quit())
 
         self.set_default_size(400,300)
-        self.set_title("Context Annotator")
+        self.set_title(_("Context Annotator"))
     
         bar = gtk.MenuBar()
-        file_item = gtk.MenuItem(label='Annotation')
+        file_item = gtk.MenuItem(label=_('_Annotations'))
         bar.append(file_item)
         file_menu = gtk.Menu()
         file_item.set_submenu(file_menu)
@@ -393,6 +398,20 @@ class Application(gtk.Window):
         save_item.connect('activate',lambda x: self.save())
         file_menu.append(open_item)
         file_menu.append(save_item)
+
+        view_item = gtk.MenuItem(label=_('_View'))
+        bar.append(view_item)
+        view_menu = gtk.Menu()
+        view_item.set_submenu(view_menu)
+        zoom_in_item = gtk.ImageMenuItem(gtk.STOCK_ZOOM_IN, accel)
+        zoom_in_item.connect('activate',lambda x: self.annotator.bigger())
+        #key,mod = gtk.accelerator_parse("<Ctrl>")
+        zoom_in_item.add_accelerator("activate",accel,43,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
+        zoom_out_item = gtk.ImageMenuItem(gtk.STOCK_ZOOM_OUT)
+        zoom_out_item.connect('activate',lambda x: self.annotator.smaller())
+        zoom_out_item.add_accelerator("activate",accel,45,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
+        view_menu.append(zoom_in_item)
+        view_menu.append(zoom_out_item)
     
         layout = gtk.VBox()
         layout.pack_start(bar,expand=False,fill=True)
@@ -406,7 +425,7 @@ class Application(gtk.Window):
 
         self.annotator.add_source(SoundSource("examples/01 - Elvenpath.wav",cur))
     def save(self):
-        dialog = gtk.FileChooserDialog(title="Save annotation",
+        dialog = gtk.FileChooserDialog(title=_("Save annotation"),
                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
                                        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
         response = dialog.run()
@@ -416,7 +435,7 @@ class Application(gtk.Window):
             pass
         dialog.destroy()
     def load(self):
-        dialog = gtk.FileChooserDialog(title="Load annotation",
+        dialog = gtk.FileChooserDialog(title=_("Load annotation"),
                                        action=gtk.FILE_CHOOSER_ACTION_OPEN,
                                        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
         response = dialog.run()
