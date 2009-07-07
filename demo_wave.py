@@ -138,12 +138,6 @@ class CtxAnnotator(gtk.VBox):
         gtk.VBox.__init__(self)
         self.pack_start(scr_win,expand=True,fill=True)
         self.pack_end(self.context_box,expand=False,fill=True)
-        self.connect('key-press-event',self.on_key)
-    def on_key(self,wid,ev):
-        if ev.string is '+':
-            self.bigger()
-        elif ev.string is '-':
-            self.smaller()
     def find_annotation(self,x):
         for (ctx,but) in self.contexts.values():
             ind = 0
