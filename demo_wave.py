@@ -296,20 +296,13 @@ class CtxAnnotator(gtk.VBox):
                                     date2num(datetime.datetime.utcfromtimestamp(float(end))))
             self.recalculate()
         
-
-def scale_display(obj,value):
-    if value == 0:
-        return ""
-    else:
-        return num2date(value).strftime("%Y-%m-%d %H:%M:%S")
-
 class ScaleDisplayPolicy:
     def __init__(self,pixel_per_hour,base_height=100):
         self.pixel_per_hour = pixel_per_hour
         self.base_height = base_height
-        self.scales = [0.25,0.5,1.0,1.5,2.0,2.5,3.0]
-        self.curx = 2
-        self.cury = 2
+        self.scales = [0.1,0.25,0.5,1.0,1.5,2.0,2.5,3.0,4.0]
+        self.curx = 3
+        self.cury = 3
     def biggerx(self):
         if self.curx < len(self.scales)-1:
             self.curx += 1
