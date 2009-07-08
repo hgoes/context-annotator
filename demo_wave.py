@@ -8,6 +8,7 @@ import scikits.audiolab
 from matplotlib.figure import Figure
 from matplotlib.dates import date2num,num2date,MinuteLocator
 import gettext
+from dateentry import DateEdit
 
 gettext.install('context-annotator','po')
 
@@ -198,6 +199,7 @@ class CtxAnnotator(gtk.VBox):
         rem_but.connect('clicked',self.remove_source_handler,frame,disp)
         frame.attach(rem_but,1,2,1,2,gtk.SHRINK|gtk.FILL,gtk.SHRINK|gtk.FILL)
         frame.attach(gtk.VBox(),1,2,2,3,gtk.SHRINK,gtk.EXPAND)
+        frame.show_all()
         self.display_box.pack_start(frame,expand=True,fill=True)
         self.recalculate()
     def remove_source_handler(self,but,frame,display):
@@ -405,6 +407,14 @@ class Application(gtk.Window):
         save_item.add_accelerator('activate',accel,115,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
         file_menu.append(open_item)
         file_menu.append(save_item)
+        
+        source_item = gtk.MenuItem(label=_('_Sources'))
+        bar.append(source_item)
+        source_menu = gtk.Menu()
+        source_item.set_submenu(source_menu)
+        open_source_item = gtk.ImageMenuItem(gtk.STOCK_OPEN)
+        open_source_item.connect('activate',lambda x: self.load_source())
+        source_menu.append(open_source_item)
 
         view_item = gtk.MenuItem(label=_('_View'))
         bar.append(view_item)
@@ -426,7 +436,7 @@ class Application(gtk.Window):
         
         self.annotator = CtxAnnotator()
         layout.pack_start(self.annotator,expand=True,fill=True)
-        self.annotator.add_source(MovementSource("examples/movement.log"))
+        #self.annotator.add_source(MovementSource("examples/movement.log"))
         cur = datetime.datetime(2009,6,3,9,48,0,0,UTC())
 
         self.annotator.add_source(SoundSource("examples/01 - Elvenpath.wav",cur))
@@ -450,9 +460,134 @@ class Application(gtk.Window):
         elif response == gtk.RESPONSE_CANCEL:
             pass
         dialog.destroy()
+    def load_source(self):
+        dialog = LoadSourceDialog()
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            src = dialog.get_source()
+            self.annotator.add_source(src)
+        dialog.destroy()
     def run(self):
         self.show_all()
         gtk.main()
+
+class LoadSourceDialog(gtk.Dialog):
+    def __init__(self):
+        gtk.Dialog.__init__(self,title=_("Load source"))
+        table = gtk.Table(5,2)
+        lbl_file = gtk.Label()
+        lbl_file.set_markup("<b>"+_("File")+":</b>")
+        lbl_file.set_alignment(0.0,0.5)
+        self.openw = gtk.FileChooserButton(title=_("Load source"))
+        
+        lbl_filetype = gtk.Label()
+        lbl_filetype.set_markup("<b>"+_("File type")+":</b>")
+        lbl_filetype.set_alignment(0.0,0.5)
+        
+        self.opt_movement = gtk.RadioButton(label=_("Movement data"))
+        self.opt_movement.connect('toggled',lambda s: self.update_hide_show())
+        self.opt_audio = gtk.RadioButton(group=self.opt_movement,label=_("Audio data"))
+        self.opt_audio.connect('toggled',lambda s: self.update_hide_show())
+        
+        self.box_audio = gtk.Table(3,2)
+        lbl_channel = gtk.Label()
+        lbl_channel.set_markup(_("Channel")+":")
+        lbl_channel.set_alignment(0.0,0.5)
+        opt_chan1 = gtk.RadioButton(label=_("Channel")+" 1")
+        opt_chan2 = gtk.RadioButton(group=opt_chan1,label=_("Channel")+" 2")
+        lbl_offset = gtk.Label()
+        lbl_offset.set_markup(_("Offset")+":")
+        lbl_offset.set_alignment(0.0,0.5)
+        date_box = DateEdit(show_time=True,use_24_format=True)
+        """date_box = gtk.HBox()
+        self.entr_hour = gtk.SpinButton()
+        self.entr_hour.set_range(0,23)
+        self.entr_hour.set_increments(1,1)
+        self.entr_hour.set_wrap(True)
+        self.entr_minute = gtk.SpinButton()
+        self.entr_minute.set_range(0,59)
+        self.entr_minute.set_increments(1,10)
+        self.entr_minute.set_wrap(True)
+        self.entr_second = gtk.SpinButton()
+        self.entr_second.set_range(0,59)
+        self.entr_second.set_increments(1,10)
+        self.entr_second.set_wrap(True)
+        self.entr_day = gtk.SpinButton()
+        self.entr_day.set_range(1,31)
+        self.entr_day.set_increments(1,7)
+        self.entr_day.set_wrap(True)
+        self.entr_month = gtk.SpinButton()
+        self.entr_month.set_range(1,12)
+        self.entr_month.set_increments(1,4)
+        self.entr_month.set_wrap(True)
+        self.entr_year = gtk.SpinButton()
+        self.entr_year.set_range(1900,3000)
+        self.entr_year.set_increments(1,5)
+        date_box.pack_start(self.entr_hour,False)
+        date_box.pack_start(gtk.Label(":"),False)
+        date_box.pack_start(self.entr_minute,False)
+        date_box.pack_start(gtk.Label(":"),False)
+        date_box.pack_start(self.entr_second,False)
+        date_box.pack_start(gtk.Label(" "),False)
+        date_box.pack_start(self.entr_day,False)
+        date_box.pack_start(gtk.Label("."),False)
+        date_box.pack_start(self.entr_month,False)
+        date_box.pack_start(gtk.Label("."),False)
+        date_box.pack_start(self.entr_year,False)"""
+        self.box_audio.attach(lbl_channel,0,1,0,1,gtk.SHRINK|gtk.FILL)
+        self.box_audio.attach(opt_chan1,1,2,0,1)
+        self.box_audio.attach(opt_chan2,1,2,1,2)
+        self.box_audio.attach(lbl_offset,0,1,2,3,gtk.SHRINK|gtk.FILL)
+        self.box_audio.attach(date_box,1,2,2,3)
+
+        self.box_movement = gtk.Table(1,3)
+        lbl_axis = gtk.Label()
+        lbl_axis.set_markup(_("Axis")+":")
+        lbl_axis.set_alignment(0.0,0.5)
+        opt_axis_x = gtk.RadioButton(label=_("X-Axis"))
+        opt_axis_y = gtk.RadioButton(group=opt_axis_x,label=_("Y-Axis"))
+        opt_axis_z = gtk.RadioButton(group=opt_axis_y,label=_("Z-Axis"))
+        self.box_movement.attach(lbl_axis,0,1,0,1,gtk.SHRINK|gtk.FILL)
+        self.box_movement.attach(opt_axis_x,1,2,0,1)
+        self.box_movement.attach(opt_axis_y,1,2,1,2)
+        self.box_movement.attach(opt_axis_z,1,2,2,3)
+
+        table.attach(lbl_file,0,1,0,1,gtk.SHRINK|gtk.FILL)
+        table.attach(self.openw,1,2,0,1)
+        table.attach(lbl_filetype,0,1,1,2,gtk.SHRINK|gtk.FILL)
+        table.attach(self.opt_movement,1,2,1,2)
+        table.attach(self.box_movement,1,2,2,3,xpadding=20)
+        table.attach(self.opt_audio,1,2,3,4)
+        table.attach(self.box_audio,1,2,4,5,xpadding=20)
+
+        self.get_content_area().add(table)
+        self.update_hide_show()
+
+        self.add_buttons(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK)
+        self.show_all()
+
+    def update_hide_show(self):
+        if self.opt_movement.get_active():
+            self.box_movement.set_sensitive(True)
+            self.box_audio.set_sensitive(False)
+        else:
+            self.box_movement.set_sensitive(False)
+            self.box_audio.set_sensitive(True)
+    def get_source(self):
+        fn = self.openw.get_filename()
+        if fn is None:
+            return None
+        if self.opt_movement.get_active():
+            return MovementSource(fn)
+        else:
+            hour = int(self.entr_hour.get_value())
+            minute = int(self.entr_minute.get_value())
+            second = int(self.entr_second.get_value())
+            day = int(self.entr_month.get_value())
+            month = int(self.entr_month.get_value())
+            year = int(self.entr_year.get_value())
+            cur = datetime.datetime(year,month,day,hour,minute,second,0,UTC())
+            return SoundSource(fn,cur)
 
 # Note to python devs: You suck!
 class UTC(datetime.tzinfo):
