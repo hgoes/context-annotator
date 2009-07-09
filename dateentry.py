@@ -286,7 +286,12 @@ class DateEdit(gtk.HBox):
         str = model.get_value(it,0)
         self.__time_entry.set_text(str)
         self.emit('time_changed', None);
-        
+    def get_datetime(self):
+        if self.__flag_use_24_format:
+            format_time = '%H:%M'
+        else:
+            format_time = '%I:%M %p'
+        return datetime.datetime.strptime(self.__time_entry.get_text()+' '+self.__date_entry.get_text(),format_time+' %x')
         
     # Todo: get_properties
         # PROP_TIME

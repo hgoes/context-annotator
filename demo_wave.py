@@ -498,13 +498,13 @@ class LoadSourceDialog(gtk.Dialog):
         lbl_offset = gtk.Label()
         lbl_offset.set_markup(_("Offset")+":")
         lbl_offset.set_alignment(0.0,0.5)
-        date_box = DateEdit(show_time=True,use_24_format=True)
+        self.date_entry = DateEdit(show_time=True,use_24_format=True)
 
         self.box_audio.attach(lbl_channel,0,1,0,1,gtk.SHRINK|gtk.FILL)
         self.box_audio.attach(opt_chan1,1,2,0,1)
         self.box_audio.attach(opt_chan2,1,2,1,2)
         self.box_audio.attach(lbl_offset,0,1,2,3,gtk.SHRINK|gtk.FILL)
-        self.box_audio.attach(date_box,1,2,2,3)
+        self.box_audio.attach(self.date_entry,1,2,2,3)
 
         self.box_movement = gtk.Table(1,3)
         lbl_axis = gtk.Label()
@@ -546,14 +546,8 @@ class LoadSourceDialog(gtk.Dialog):
         if self.opt_movement.get_active():
             return MovementSource(fn)
         else:
-            hour = int(self.entr_hour.get_value())
-            minute = int(self.entr_minute.get_value())
-            second = int(self.entr_second.get_value())
-            day = int(self.entr_month.get_value())
-            month = int(self.entr_month.get_value())
-            year = int(self.entr_year.get_value())
-            cur = datetime.datetime(year,month,day,hour,minute,second,0,UTC())
-            return SoundSource(fn,cur)
+            offset = self.date_entry.get_datetime()
+            return SoundSource(fn,offset)
 
 # Note to python devs: You suck!
 class UTC(datetime.tzinfo):
