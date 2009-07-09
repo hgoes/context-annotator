@@ -153,10 +153,11 @@ class CtxAnnotator(gtk.VBox):
         self.policy.smallerx()
         self.update_zoom()
     def update_zoom(self):
-        utc = UTC()
-        (w,h) = self.policy.display_sizes(num2date(self.xmax,tz=utc)-num2date(self.xmin,tz=utc))
-        for d in self.displays:
-            d.set_size_request(w,h)
+        if self.displays != []:
+            utc = UTC()
+            (w,h) = self.policy.display_sizes(num2date(self.xmax,tz=utc)-num2date(self.xmin,tz=utc))
+            for d in self.displays:
+                d.set_size_request(w,h)
             
     def recalculate(self):
         xmin = None
