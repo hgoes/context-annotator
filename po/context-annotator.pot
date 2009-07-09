@@ -39,3 +39,39 @@ msgstr ""
 
 msgid "_View"
 msgstr ""
+
+msgid "_Sources"
+msgstr ""
+
+msgid "Load source"
+msgstr ""
+
+msgid "File"
+msgstr ""
+
+msgid "File type"
+msgstr ""
+
+msgid "Movement data"
+msgstr ""
+
+msgid "Audio data"
+msgstr ""
+
+msgid "Channel"
+msgstr ""
+
+msgid "Offset"
+msgstr ""
+
+msgid "Axis"
+msgstr ""
+
+msgid "X-Axis"
+msgstr ""
+
+msgid "Y-Axis"
+msgstr ""
+
+msgid "Z-Axis"
+msgstr ""
