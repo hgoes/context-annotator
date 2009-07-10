@@ -29,7 +29,22 @@ import gtk
 from gtk import gdk
 import time
 import datetime
+import timezone
+from math import floor
 
+class DateEditMeta(gobject.GObjectMeta):
+    def __init__(cls,*kwds):
+        gobject.GObjectMeta.__init__(cls,*kwds)
+        cls.__gtype_name__ = cls.__name__
+        gobject.signal_new('time_changed', cls,
+                           gobject.SIGNAL_RUN_FIRST,
+                           gobject.TYPE_NONE,
+                           (gobject.TYPE_PYOBJECT,))
+        gobject.signal_new('date_changed', cls,
+                           gobject.SIGNAL_RUN_FIRST,
+                           gobject.TYPE_NONE,
+                           (gobject.TYPE_PYOBJECT,))
+        gobject.type_register(cls)
 
  # gnome_date_edit_new:
  # @the_time: date and time to be displayed on the widget
@@ -43,21 +58,14 @@ import datetime
  # Returns: a new #GnomeDateEdit widget.
  # Todo: missing the version with the flags in the constructor
 class DateEdit(gtk.HBox):
-    __gtype_name__ = 'DateEdit'
+    __metaclass__ = DateEditMeta
 
     def __init__(self, the_time = None, show_time = True, use_24_format = True):
         gtk.HBox.__init__(self)
 
         # register custom signals, help can anyone explain this call parameters?
         # (I mean better than in the api docs)
-        gobject.signal_new('time_changed', DateEdit,
-                       gobject.SIGNAL_RUN_FIRST,
-                       gobject.TYPE_NONE,
-                       (gobject.TYPE_PYOBJECT,))
-        gobject.signal_new('date_changed', DateEdit,
-                       gobject.SIGNAL_RUN_FIRST,
-                       gobject.TYPE_NONE,
-                       (gobject.TYPE_PYOBJECT,))                       
+
         
         # preset values
         self.__lower_hour = 7;
@@ -106,9 +114,18 @@ class DateEdit(gtk.HBox):
         self.__time_popup.add_attribute(cell,'text',0)
         self.pack_start(self.__time_popup, False, False, 0)
         
+        # the timezone popup menu
+        self.__timezone_popup = gtk.ComboBox(TimezoneTree())
+        cell = gtk.CellRendererText()
+        self.__timezone_popup.pack_start(cell,True)
+        self.__timezone_popup.add_attribute(cell,'text',0)
+        self.__timezone_popup.set_active(15)
+        self.pack_start(self.__timezone_popup, False, False, 0)
+
         if show_time == True:
             self.__time_entry.show()
             self.__time_popup.show()
+            self.__timezone_popup.show()
         
         # the calendar popup
         self.__cal_popup = gtk.Window(gtk.WINDOW_POPUP)
@@ -291,7 +308,14 @@ class DateEdit(gtk.HBox):
             format_time = '%H:%M'
         else:
             format_time = '%I:%M %p'
-        return datetime.datetime.strptime(self.__time_entry.get_text()+' '+self.__date_entry.get_text(),format_time+' %x')
+        dt = datetime.datetime.strptime(self.__time_entry.get_text()+' '+self.__date_entry.get_text(),format_time+' %x')
+        iter = self.__timezone_popup.get_active_iter()
+        model = self.__timezone_popup.get_model()
+        name = model.get_value(iter,0)
+        offset = model.get_value(iter,1)
+        tz = timezone.FixedOffset(offset,name)
+        #dt.tzinfo = timezone.FixedOffset(offset,name)
+        return datetime.datetime(dt.year,dt.month,dt.day,dt.hour,dt.minute,dt.second,dt.microsecond,tz)
         
     # Todo: get_properties
         # PROP_TIME
@@ -323,5 +347,20 @@ class TimeTree(gtk.TreeStore):
                     label = the_time.strftime('%I:%M %p')
                 self.insert(iter,-1,[label])
 
-# Test the dateedit widget
-gobject.type_register(DateEdit)
+class TimezoneTree(gtk.TreeStore):
+    def __init__(self):
+        gtk.TreeStore.__init__(self,gobject.TYPE_STRING,gobject.TYPE_DOUBLE)
+        for i in [-12,-11,-10,-9.5,-9,-8,-7,-6,-5,-4.5,-4,-3.5,-3,-2,-1,0,1,2,3,3.5,4,4.5,5,5.5,5.75,6,6.5,7,8,9,9.5,10,10.5,11,11.5,12,12.75,13,14]:
+            lbl = "UTC"
+            if i > 0:
+                lbl+="+"
+            elif i < 0:
+                lbl+="-"
+            hrs = int(floor(abs(i)))
+            mins = int(60*(abs(i)-hrs))
+            if hrs!=0:
+                lbl+=str(hrs)
+                if mins!=0:
+                    lbl+=":"+str(mins)
+            self.insert(None,-1,[lbl,i])
+
