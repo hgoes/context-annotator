@@ -6,7 +6,7 @@ import time
 import calendar
 import scikits.audiolab
 from matplotlib.figure import Figure
-from matplotlib.dates import date2num,num2date,MinuteLocator,SecondLocator,AutoDateLocator
+from matplotlib.dates import date2num,num2date,MinuteLocator,SecondLocator,seconds,minutes,hours,weeks
 import gettext
 from dateentry import DateEdit
 from timezone import UTC
@@ -125,7 +125,9 @@ class CtxAnnotator(gtk.VBox):
         self.displays = []
         self.contexts = dict()
         self.context_colors = ['red','green','yellow','orange']
-        
+        self.xmax = None
+        self.xmin = None
+
         self.display_box = gtk.VBox()
         self.context_box = gtk.HBox()
         self.input_state = InputState(self)
@@ -139,11 +141,11 @@ class CtxAnnotator(gtk.VBox):
 
         self.adjustment = gtk.Adjustment()
         self.adjustment.connect('value-changed',self.update_pos)
-        scroller = gtk.HScrollbar(self.adjustment)
-
+        self.scroller = gtk.HScrollbar(self.adjustment)
+        self.scroller.hide()
         gtk.VBox.__init__(self)
         self.pack_start(scr_win,expand=True,fill=True)
-        self.pack_start(scroller,expand=False,fill=True)
+        self.pack_start(self.scroller,expand=False,fill=True)
         self.pack_end(self.context_box,expand=False,fill=True)
     def update_pos(self,adj):
         self.policy.update_pos(adj.value)
@@ -163,13 +165,16 @@ class CtxAnnotator(gtk.VBox):
         self.policy.smallerx()
         self.update_zoom()
     def update_zoom(self):
+        if self.xmax is None:
+            self.scroller.hide()
+            return
         max = self.xmax - self.policy.get_window()
         if self.xmin < max:
             self.adjustment.lower = self.xmin
             self.adjustment.upper = max
+            self.scroller.show()
         else:
-            self.adjustment.lower = self.xmin
-            self.adjustment.upper = self.xmin
+            self.scroller.hide()
         self.adjustment.step_increment = self.policy.get_steps()
         self.adjustment.changed()
         for d in self.displays:
@@ -317,10 +322,10 @@ class CtxAnnotator(gtk.VBox):
 
 class ScalePolicy:
     def __init__(self):
-        self.scales = [(_("Hour"),float(1)/24,MinuteLocator(interval=10)),
-                       (_("Half-hour"),float(1)/48,MinuteLocator(interval=5)),
-                       (_("10-Minute"),float(1)/(24*6),MinuteLocator()),
-                       (_("Minute"),float(1)/(24*60),SecondLocator(interval=10))
+        self.scales = [(_("Hour"),hours(1),MinuteLocator(interval=10)),
+                       (_("Half-hour"),minutes(30),MinuteLocator(interval=5)),
+                       (_("10-Minute"),minutes(10),MinuteLocator(interval=2)),
+                       (_("Minute"),minutes(1),SecondLocator(interval=10))
                        ]
         self.cur = 0
         self.pos = None
@@ -460,10 +465,6 @@ class Application(gtk.Window):
         
         self.annotator = CtxAnnotator()
         layout.pack_start(self.annotator,expand=True,fill=True)
-        #self.annotator.add_source(MovementSource("examples/movement.log"))
-        #cur = datetime.datetime(2009,6,3,9,48,0,0,UTC())
-
-        #self.annotator.add_source(SoundSource("examples/01 - Elvenpath.wav",cur))
     def save(self):
         dialog = gtk.FileChooserDialog(title=_("Save annotation"),
                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
@@ -493,6 +494,7 @@ class Application(gtk.Window):
         dialog.destroy()
     def run(self):
         self.show_all()
+        self.annotator.update_zoom()
         gtk.main()
 
 class LoadSourceDialog(gtk.Dialog):
