@@ -6,9 +6,10 @@ import time
 import calendar
 import scikits.audiolab
 from matplotlib.figure import Figure
-from matplotlib.dates import date2num,num2date,MinuteLocator
+from matplotlib.dates import date2num,num2date,MinuteLocator,AutoDateLocator
 import gettext
 from dateentry import DateEdit
+from timezone import UTC
 
 gettext.install('context-annotator','po')
 
@@ -27,7 +28,8 @@ class Display(FigureCanvas):
         yb = src.yBounds()
         self.figure = Figure(figsize=(5,4),dpi=100)
         self.plot = self.figure.add_subplot(111,xbound=xb,ybound=yb,autoscale_on=False)
-        self.plot.get_xaxis().set_major_locator(MinuteLocator(tz=UTC()))
+        #self.plot.get_xaxis().set_major_locator(MinuteLocator(tz=UTC()))
+        self.plot.get_xaxis().set_major_locator(AutoDateLocator(tz=UTC()))
         self.plot.plot_date(src.getX(),src.getY(),'-')
         self.spanner = self.plot.axvspan(xb[0],xb[1],alpha=0.5)
         self.ctx_spanners = dict()
@@ -438,9 +440,9 @@ class Application(gtk.Window):
         self.annotator = CtxAnnotator()
         layout.pack_start(self.annotator,expand=True,fill=True)
         #self.annotator.add_source(MovementSource("examples/movement.log"))
-        cur = datetime.datetime(2009,6,3,9,48,0,0,UTC())
+        #cur = datetime.datetime(2009,6,3,9,48,0,0,UTC())
 
-        self.annotator.add_source(SoundSource("examples/01 - Elvenpath.wav",cur))
+        #self.annotator.add_source(SoundSource("examples/01 - Elvenpath.wav",cur))
     def save(self):
         dialog = gtk.FileChooserDialog(title=_("Save annotation"),
                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
@@ -511,13 +513,13 @@ class LoadSourceDialog(gtk.Dialog):
         lbl_axis = gtk.Label()
         lbl_axis.set_markup(_("Axis")+":")
         lbl_axis.set_alignment(0.0,0.5)
-        opt_axis_x = gtk.RadioButton(label=_("X-Axis"))
-        opt_axis_y = gtk.RadioButton(group=opt_axis_x,label=_("Y-Axis"))
-        opt_axis_z = gtk.RadioButton(group=opt_axis_y,label=_("Z-Axis"))
+        self.opt_axis_x = gtk.RadioButton(label=_("X-Axis"))
+        self.opt_axis_y = gtk.RadioButton(group=self.opt_axis_x,label=_("Y-Axis"))
+        self.opt_axis_z = gtk.RadioButton(group=self.opt_axis_y,label=_("Z-Axis"))
         self.box_movement.attach(lbl_axis,0,1,0,1,gtk.SHRINK|gtk.FILL)
-        self.box_movement.attach(opt_axis_x,1,2,0,1)
-        self.box_movement.attach(opt_axis_y,1,2,1,2)
-        self.box_movement.attach(opt_axis_z,1,2,2,3)
+        self.box_movement.attach(self.opt_axis_x,1,2,0,1)
+        self.box_movement.attach(self.opt_axis_y,1,2,1,2)
+        self.box_movement.attach(self.opt_axis_z,1,2,2,3)
 
         table.attach(lbl_file,0,1,0,1,gtk.SHRINK|gtk.FILL)
         table.attach(self.openw,1,2,0,1)
@@ -545,24 +547,16 @@ class LoadSourceDialog(gtk.Dialog):
         if fn is None:
             return None
         if self.opt_movement.get_active():
-            return MovementSource(fn)
+            if self.opt_axis_x.get_active():
+                axis = 0
+            elif self.opt_axis_y.get_active():
+                axis = 1
+            else:
+                axis = 2
+            return MovementSource(fn,axis)
         else:
             offset = self.date_entry.get_datetime()
             return SoundSource(fn,offset)
-
-# Note to python devs: You suck!
-class UTC(datetime.tzinfo):
-    """UTC"""
-
-    def utcoffset(self, dt):
-        return datetime.timedelta(0)
-
-    def tzname(self, dt):
-        return "UTC"
-
-    def dst(self, dt):
-        return datetime.timedelta(0)
-
 
 if __name__=="__main__":
     app = Application()

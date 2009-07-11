@@ -19,7 +19,6 @@ class SoundSource:
         self.samplerate = file.samplerate
 
         self.frames = file.read_frames(file.nframes)
-        #print self.frames[::10000].T[0]
         self.name = fn
         self.offset = offset
         self.channel = chan
@@ -51,26 +50,27 @@ class SoundSource:
         return (self.frames[int(fstart*self.samplerate):int(fend*self.samplerate)].T,self.samplerate)
 
 class MovementSource:
-    def __init__(self,fn):
+    def __init__(self,fn,axis=0):
         f = open(fn,'r')
         lines = f.readlines()
         sz = len(lines)
         #print sz
         self.timedata = np.empty(sz,np.dtype(np.float))
-        self.xdata = np.empty((sz,6),np.dtype(np.float))
+        self.xdata = np.empty((sz,2),np.dtype(np.float))
         self.name = fn
         for i in range(sz):
             (timestamp,ms,xv,xd,yv,yd,zv,zd) = lines[i].split()
             self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(int(timestamp))
                                         + datetime.timedelta(seconds = float("0."+ms)))
-            #print self.timedata[i]
-            #self.xdata[i] = float(xv)
-            self.xdata[i,0] = float(xv)
-            self.xdata[i,1] = float(xd)
-            self.xdata[i,2] = float(yv)
-            self.xdata[i,3] = float(yd)
-            self.xdata[i,4] = float(zv)
-            self.xdata[i,5] = float(zd)
+            if axis==0:
+                self.xdata[i,0] = float(xv)
+                self.xdata[i,1] = float(xd)
+            elif axis==1:
+                self.xdata[i,0] = float(yv)
+                self.xdata[i,1] = float(yd)
+            elif axis==2:
+                self.xdata[i,0] = float(zv)
+                self.xdata[i,1] = float(zd)
     def getX(self):
         return self.timedata
     def getY(self):
