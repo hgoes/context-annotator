@@ -6,7 +6,7 @@ import time
 import calendar
 import scikits.audiolab
 from matplotlib.figure import Figure
-from matplotlib.dates import date2num,num2date,MinuteLocator,AutoDateLocator
+from matplotlib.dates import date2num,num2date,MinuteLocator,SecondLocator,AutoDateLocator
 import gettext
 from dateentry import DateEdit
 from timezone import UTC
@@ -28,8 +28,6 @@ class Display(FigureCanvas):
         yb = src.yBounds()
         self.figure = Figure(figsize=(5,4),dpi=100)
         self.plot = self.figure.add_subplot(111,xbound=xb,ybound=yb,autoscale_on=False)
-        #self.plot.get_xaxis().set_major_locator(MinuteLocator(tz=UTC()))
-        self.plot.get_xaxis().set_major_locator(AutoDateLocator(tz=UTC()))
         self.plot.plot_date(src.getX(),src.getY(),'-')
         self.spanner = self.plot.axvspan(xb[0],xb[1],alpha=0.5)
         self.ctx_spanners = dict()
@@ -37,15 +35,16 @@ class Display(FigureCanvas):
         self.mpl_connect('button_press_event',self.on_press)
         self.mpl_connect('button_release_event',self.on_release)
         self.mpl_connect('motion_notify_event',self.on_move)
-    def update_range(self,min,max):
-        self.plot.set_xlim(min,max)
-        self.draw_idle()
     def update_spanner(self,vall,valr):
         if self.spanner != None:
             self.spanner.remove()
             self.spanner = None
         if vall != valr:
             self.spanner = self.plot.axvspan(vall,valr,alpha=0.5)
+        self.draw_idle()
+    def update_zoom(self,policy):
+        self.plot.set_xlim(*policy.get_bounds())
+        self.plot.get_xaxis().set_major_locator(policy.get_locator())
         self.draw_idle()
     def on_press(self,event):
         if event.xdata != None and event.ydata != None:
@@ -122,7 +121,7 @@ class InputState:
 
 class CtxAnnotator(gtk.VBox):
     def __init__(self):
-        self.policy = ScaleDisplayPolicy(10000,150)
+        self.policy = ScalePolicy()
         self.displays = []
         self.contexts = dict()
         self.context_colors = ['red','green','yellow','orange']
@@ -136,13 +135,22 @@ class CtxAnnotator(gtk.VBox):
 
         scr_win = gtk.ScrolledWindow()
         scr_win.add_with_viewport(self.display_box)
-        scr_win.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
+        scr_win.set_policy(gtk.POLICY_NEVER,gtk.POLICY_AUTOMATIC)
+
+        self.adjustment = gtk.Adjustment()
+        self.adjustment.connect('value-changed',self.update_pos)
+        scroller = gtk.HScrollbar(self.adjustment)
 
         gtk.VBox.__init__(self)
         self.pack_start(scr_win,expand=True,fill=True)
+        self.pack_start(scroller,expand=False,fill=True)
         self.pack_end(self.context_box,expand=False,fill=True)
+    def update_pos(self,adj):
+        self.policy.update_pos(adj.value)
+        for d in self.displays:
+            d.update_zoom(self.policy)
     def find_annotation(self,x):
-        for (ctx,but) in self.contexts.values():
+        for (ctx,but) in self.contexts.itervalues():
             ind = 0
             for ind in range(len(ctx.entries)):
                 if ctx.entries[ind][0] <= x and ctx.entries[ind][1] >= x:
@@ -155,11 +163,17 @@ class CtxAnnotator(gtk.VBox):
         self.policy.smallerx()
         self.update_zoom()
     def update_zoom(self):
-        if self.displays != []:
-            utc = UTC()
-            (w,h) = self.policy.display_sizes(num2date(self.xmax,tz=utc)-num2date(self.xmin,tz=utc))
-            for d in self.displays:
-                d.set_size_request(w,h)
+        max = self.xmax - self.policy.get_window()
+        if self.xmin < max:
+            self.adjustment.lower = self.xmin
+            self.adjustment.upper = max
+        else:
+            self.adjustment.lower = self.xmin
+            self.adjustment.upper = self.xmin
+        self.adjustment.step_increment = self.policy.get_steps()
+        self.adjustment.changed()
+        for d in self.displays:
+            d.update_zoom(self.policy)
             
     def recalculate(self):
         xmin = None
@@ -170,7 +184,7 @@ class CtxAnnotator(gtk.VBox):
                 xmin = min
             if xmax is None or max > xmax:
                 xmax = max
-        for (ctx,but) in self.contexts.values():
+        for (ctx,but) in self.contexts.itervalues():
             for (start,end) in ctx.entries:
                 if xmin is None or start < xmin:
                     xmin = start
@@ -179,13 +193,13 @@ class CtxAnnotator(gtk.VBox):
         self.xmin = xmin
         self.xmax = xmax
         if not xmin is None:
-            for d in self.displays:
-                d.update_range(xmin,xmax)
+            self.policy.update_min(xmin)
+            self.update_zoom()
             self.input_state.propagate_marker()
 
     def add_source(self,src):
         disp = Display(self.input_state,src)
-        for ctx in self.contexts:
+        for (ctx,but) in self.contexts.itervalues():
             disp.notice_context(ctx)
         self.displays.append(disp)
         frame = gtk.Table(3,2)
@@ -213,7 +227,7 @@ class CtxAnnotator(gtk.VBox):
         found_color = None
         for col in self.context_colors:
             avail = True
-            for (ctx,but) in self.contexts.values():
+            for (ctx,but) in self.contexts.itervalues():
                 if ctx.color == col:
                     avail = False
                     break
@@ -280,7 +294,7 @@ class CtxAnnotator(gtk.VBox):
             d.notice_annotation_removal(name,pos)
     def write_out(self,fn):
         annotations = []
-        for (ctx,but) in self.contexts.values():
+        for (ctx,but) in self.contexts.itervalues():
             for (begin,end) in ctx.entries:
                 annotations.append((ctx.name,begin,end))
         annotations.sort(key=lambda obj: obj[1])
@@ -300,31 +314,38 @@ class CtxAnnotator(gtk.VBox):
                                     date2num(datetime.datetime.utcfromtimestamp(float(start))),
                                     date2num(datetime.datetime.utcfromtimestamp(float(end))))
             self.recalculate()
-        
-class ScaleDisplayPolicy:
-    def __init__(self,pixel_per_hour,base_height=100):
-        self.pixel_per_hour = pixel_per_hour
-        self.base_height = base_height
-        self.scales = [0.1,0.25,0.5,1.0,1.5,2.0,2.5,3.0,4.0]
-        self.curx = 3
-        self.cury = 3
+
+class ScalePolicy:
+    def __init__(self):
+        self.scales = [(_("Hour"),float(1)/24,MinuteLocator(interval=10)),
+                       (_("Half-hour"),float(1)/48,MinuteLocator(interval=5)),
+                       (_("10-Minute"),float(1)/(24*6),MinuteLocator()),
+                       (_("Minute"),float(1)/(24*60),SecondLocator(interval=10))
+                       ]
+        self.cur = 0
+        self.pos = None
+    def get_window(self):
+        return self.scales[self.cur][1]
+    def get_locator(self):
+        return self.scales[self.cur][2]
+    def get_steps(self):
+        return self.get_window()/100
+    def get_bounds(self):
+        if self.pos is None:
+            raise ValueError()
+        win = self.get_window()
+        return (self.pos,self.pos+win)
+    def update_min(self,npos):
+        if self.pos is None:
+            self.pos = npos
+    def update_pos(self,pos):
+        self.pos = pos
     def biggerx(self):
-        if self.curx < len(self.scales)-1:
-            self.curx += 1
+        if self.cur+1 < len(self.scales):
+            self.cur+=1
     def smallerx(self):
-        if self.curx > 0:
-            self.curx -= 1
-    def biggery(self):
-        if self.cury < len(self.scales)-1:
-            self.cury += 1
-    def smallery(self):
-        if self.cury > 0:
-            self.cury -= 1
-    def display_sizes(self,tdelta):
-        hours = float(tdelta.days)*24.0 + float(tdelta.seconds)/3600
-        width = hours*self.pixel_per_hour*self.scales[self.curx]
-        height = self.base_height*self.scales[self.cury]
-        return (int(width),int(height))
+        if self.cur > 0:
+            self.cur-=1
 
 class ContextButton(gtk.HBox):
     def __init__(self,descr,par):
@@ -351,7 +372,7 @@ class SelectionMenu(gtk.Menu):
         ann = gtk.MenuItem(label=_("Annotate"))
         sub_ann = gtk.Menu()
         ann.set_submenu(sub_ann)
-        for (ctx,but) in par.contexts.values():
+        for (ctx,but) in par.contexts.itervalues():
             it = gtk.ImageMenuItem("")
             img = gtk.Image()
             img.set_from_stock(gtk.STOCK_BOLD,gtk.ICON_SIZE_MENU)
