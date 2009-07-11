@@ -199,8 +199,8 @@ class CtxAnnotator(gtk.VBox):
         self.xmax = xmax
         if not xmin is None:
             self.policy.update_min(xmin)
-            self.update_zoom()
             self.input_state.propagate_marker()
+        self.update_zoom()
 
     def add_source(self,src):
         disp = Display(self.input_state,src)
