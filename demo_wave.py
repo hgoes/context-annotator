@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8
+
 import numpy as np
 #import matplotlib.pyplot as plt
 import gtk
@@ -457,7 +460,17 @@ class Application(gtk.Window):
         zoom_out_item.add_accelerator("activate",accel,45,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
         view_menu.append(zoom_in_item)
         view_menu.append(zoom_out_item)
+
+        help_item = gtk.MenuItem(label=_('_Help'))
+        bar.append(help_item)
+        help_menu = gtk.Menu()
+        help_item.set_submenu(help_menu)
+        about_item = gtk.ImageMenuItem(gtk.STOCK_ABOUT)
+        about_item.connect('activate',lambda x: self.show_about())
+        help_menu.append(about_item)
     
+        status = gtk.Statusbar()
+
         layout = gtk.VBox()
         layout.pack_start(bar,expand=False,fill=True)
 
@@ -465,6 +478,7 @@ class Application(gtk.Window):
         
         self.annotator = CtxAnnotator()
         layout.pack_start(self.annotator,expand=True,fill=True)
+        layout.pack_start(status,expand=False,fill=True)
     def save(self):
         dialog = gtk.FileChooserDialog(title=_("Save annotation"),
                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
@@ -496,6 +510,28 @@ class Application(gtk.Window):
         self.show_all()
         self.annotator.update_zoom()
         gtk.main()
+    def show_about(self):
+        dialog = gtk.AboutDialog()
+        dialog.set_name(_("Context Annotator"))
+        dialog.set_copyright("© 2009 Henning Günther")
+        dialog.set_license(_("\
+This program is free software; you can redistribute\n\
+it and/or modify it under the terms of the GNU General\n\
+Public License as published by the Free Software\n\
+Foundation; either version 3 of the License, or (at your\n\
+option) any later version.\n\n\
+This program is distributed in the hope that it will be\n\
+useful, but WITHOUT ANY WARRANTY; without even the\n\
+implied warranty of MERCHANTABILITY or FITNESS FOR A\n\
+PARTICULAR PURPOSE. See the GNU General Public License\n\
+for more details.\n\n\
+You should have received a copy of the GNU General\n\
+Public License along with this program; if not, see\n\
+<http://www.gnu.org/licenses/>."))
+        dialog.set_version("0.1")
+        dialog.set_authors(["Henning Günther <h.guenther@tu-bs.de>"])
+        dialog.run()
+        dialog.destroy()
 
 class LoadSourceDialog(gtk.Dialog):
     def __init__(self):
