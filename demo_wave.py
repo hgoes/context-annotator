@@ -273,14 +273,6 @@ class ContextButton(gtk.HBox):
         rem_button.connect('clicked',lambda but: par.remove_context(name))
         add_button.connect('clicked',lambda but: par.create_annotation(name))
 
-class ContextDescription:
-    def __init__(self,name,color):
-        self.name = name
-        self.color = color
-        self.entries = []
-    def add_entry(self,start,end):
-        self.entries.append((start,end))
-
 class SelectionMenu(gtk.Menu):
     def __init__(self,par,display):
         gtk.Menu.__init__(self)
