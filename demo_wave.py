@@ -66,6 +66,8 @@ class CtxAnnotator(gtk.VBox):
         self.xmax = None
         self.xmin = None
         self.annotations = Annotations()
+        self.annotations.connect('context-added',self.add_context_button)
+        self.annotations.connect('context-removed',self.remove_context_button)
         self.buttons = dict()
 
         self.display_box = gtk.VBox()
@@ -165,16 +167,18 @@ class CtxAnnotator(gtk.VBox):
         self.displays.remove(display)
         self.recalculate()
     def add_context(self,name):
-        color = self.annotations.add_context(name)
+        self.annotations.add_context(name)
+    def add_context_button(self,model,name,color):
         but = ContextButton(name,color,self)
         but.show_all()
         self.context_box.pack_start(but,expand=False,fill=True)
         self.buttons[name] = but
-    def remove_context(self,name):
-        self.annotations.remove_context(name)
+    def remove_context_button(self,model,name):
         but = self.buttons[name]
         self.context_box.remove(but)
         del self.buttons[name]
+    def remove_context(self,name):
+        self.annotations.remove_context(name)
     def create_context(self):
         dialog = gtk.MessageDialog(None,
                                    gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
@@ -208,27 +212,9 @@ class CtxAnnotator(gtk.VBox):
     def remove_annotation(self,id):
         self.annotations.remove_annotation(id)
     def write_out(self,fn):
-        annotations = []
-        for (ctx,but) in self.contexts.itervalues():
-            for (begin,end) in ctx.entries:
-                annotations.append((ctx.name,begin,end))
-        annotations.sort(key=lambda obj: obj[1])
-        with open(fn,'w') as h:
-            utc = UTC()
-            for (name,begin,end) in annotations:
-                print num2date(begin,utc)
-                h.write(name+" "+str(calendar.timegm(num2date(begin,utc).utctimetuple()))+" "
-                        +str(calendar.timegm(num2date(end,utc).utctimetuple()))+"\n")
+        self.annotations.write(fn)
     def read_in(self,fn):
-        for ctx in self.contexts.keys():
-            self.remove_context(ctx)
-        with open(fn,'r') as h:
-            for ln in h:
-                (name,start,end) = ln.split()
-                self.add_annotation(name,
-                                    date2num(datetime.datetime.utcfromtimestamp(float(start))),
-                                    date2num(datetime.datetime.utcfromtimestamp(float(end))))
-            self.recalculate()
+        self.annotations.read(fn)
 
 class ScalePolicy:
     def __init__(self):

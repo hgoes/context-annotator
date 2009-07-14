@@ -1,4 +1,8 @@
 import gobject
+import calendar
+import datetime
+from matplotlib.dates import date2num,num2date
+from timezone import UTC
 
 class AnnotationsMeta(gobject.GObjectMeta):
     def __init__(cls,*kwds):
@@ -12,6 +16,14 @@ class AnnotationsMeta(gobject.GObjectMeta):
                            gobject.SIGNAL_RUN_FIRST,
                            gobject.TYPE_NONE,
                            (gobject.TYPE_INT,))
+        gobject.signal_new('context-added',cls,
+                           gobject.SIGNAL_RUN_FIRST,
+                           gobject.TYPE_NONE,
+                           (gobject.TYPE_STRING,gobject.TYPE_STRING))
+        gobject.signal_new('context-removed',cls,
+                           gobject.SIGNAL_RUN_FIRST,
+                           gobject.TYPE_NONE,
+                           (gobject.TYPE_STRING,))
         gobject.type_register(cls)
 
 class Annotations(gobject.GObject):
@@ -44,6 +56,7 @@ class Annotations(gobject.GObject):
             if color is None:
                 raise "HALP! I CAN'T HAZ COLOR"
             self.__contexts[ctx] = (color,set())
+            self.emit('context-added',ctx,color)
             return color
         else:
             (color,entries) = self.__contexts[ctx]
@@ -59,10 +72,13 @@ class Annotations(gobject.GObject):
                 return col
         return None
     def remove_context(self,ctx):
+        if ctx not in self.__contexts:
+            return
         (color,entries) = self.__contexts[ctx]
         for id in entries:
             del self.__annotations[id]
             self.emit('annotation-removed',id)
+        self.emit('context-removed',ctx)
         del self.__contexts[ctx]
     def find_annotation(self,x):
         hits = []
@@ -83,3 +99,26 @@ class Annotations(gobject.GObject):
             if r is None or boundr > r:
                 r = boundr
         return (l,r)
+    def clear(self):
+        for i in self.__annotations:
+            self.emit('annotation-removed',i)
+        for c in self.__contexts:
+            self.emit('context-removed',c)
+        self.__annotations = dict()
+        self.__contexts = dict()
+        self.__counter = 0
+    def write(self,fn):
+        utc = UTC()
+        with open(fn,'w') as h:
+            for (ctx,boundl,boundr) in self.__annotations.itervalues():
+                h.write(ctx+" "+str(calendar.timegm(num2date(boundl,utc).utctimetuple()))+" "
+                        +str(calendar.timegm(num2date(boundr,utc).utctimetuple()))+"\n")
+    def read(self,fn):
+        self.clear()
+        utc = UTC()
+        with open(fn,'r') as h:
+            for ln in h:
+                (name,start,end) = ln.split()
+                self.add_annotation(name,
+                                    date2num(datetime.datetime.utcfromtimestamp(float(start))),
+                                    date2num(datetime.datetime.utcfromtimestamp(float(end))))
