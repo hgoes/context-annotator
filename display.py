@@ -27,7 +27,11 @@ class Display(FigureCanvas):
         figure = Figure(dpi=100)
         self.plot = figure.add_subplot(111,xbound=xb,ybound=yb,autoscale_on=False)
         self.plot.plot_date(src.getX(),src.getY(),'-')
-        self.spanner = self.plot.axvspan(xb[0],xb[1],alpha=0.5)
+        if state.selection is None:
+            self.spanner = None
+        else:
+            vall,valr = state.selection
+            self.spanner = self.plot.axvspan(vall,valr,alpha=0.5)
         self.ctx_spanners = dict()
         FigureCanvas.__init__(self,figure)
         self.mpl_connect('button_press_event',self.on_press)

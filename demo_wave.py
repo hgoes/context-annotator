@@ -93,13 +93,13 @@ class CtxAnnotator(gtk.VBox):
             if xmax is None or max > xmax:
                 xmax = max
         ann_l,ann_r = self.annotations.bounds()
-        if not ann_l is None and ann_l < xmin:
+        if ann_l is not None and ann_l < xmin:
             xmin = ann_l
-        if not ann_r is None and ann_r > xmax:
+        if ann_r is not None and ann_r > xmax:
             xmax = ann_r
         self.xmin = xmin
         self.xmax = xmax
-        if not xmin is None:
+        if xmin is not None:
             self.policy.update_min(xmin)
         self.update_zoom()
 
@@ -266,7 +266,7 @@ class Application(gtk.Window):
         self.add_accel_group(accel)
         self.connect("destroy", lambda x: gtk.main_quit())
 
-        self.set_default_size(400,300)
+        self.set_default_size(800,600)
         self.set_title(_("Context Annotator"))
     
         bar = gtk.MenuBar()
