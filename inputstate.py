@@ -32,10 +32,10 @@ class Viewing:
                 boundr = self.parent.selection[1]
                 if x > boundl and x < boundr:
                     self.parent.emit('select-selection',display,boundl,boundr,time)
-                else:
-                    ann = self.parent.model.find_annotation(x)
-                    if len(ann) != 0:
-                        self.parent.emit('select-annotation',display,ann[0],time)
+                    return self
+            ann = self.parent.model.find_annotation(x)
+            if len(ann) != 0:
+                self.parent.emit('select-annotation',display,ann[0],time)
         return self
     def button_up(self,display,but,x,border_offset,time):
         return self
