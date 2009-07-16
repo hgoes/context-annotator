@@ -24,6 +24,10 @@ class AnnotationsMeta(gobject.GObjectMeta):
                            gobject.SIGNAL_RUN_FIRST,
                            gobject.TYPE_NONE,
                            (gobject.TYPE_STRING,))
+        gobject.signal_new('annotation-changed',cls,
+                           gobject.SIGNAL_RUN_FIRST,
+                           gobject.TYPE_NONE,
+                           (gobject.TYPE_INT,gobject.TYPE_STRING,gobject.TYPE_STRING,gobject.TYPE_DOUBLE,gobject.TYPE_DOUBLE))
         gobject.type_register(cls)
 
 class Annotations(gobject.GObject):
@@ -86,6 +90,10 @@ class Annotations(gobject.GObject):
             if x>=boundl and x<=boundr:
                 hits.append(id)
         return hits
+    def get_annotation(self,id):
+        (ctx,boundl,boundr) = self.__annotations[id]
+        (color,entries) = self.__contexts[ctx]
+        return (ctx,color,boundl,boundr)
     def contexts(self):
         return((name,color) for name,(color,entries) in self.__contexts.iteritems())
     def annotations(self):
@@ -107,6 +115,22 @@ class Annotations(gobject.GObject):
         self.__annotations = dict()
         self.__contexts = dict()
         self.__counter = 0
+    def find_boundings(self,x,exclude=None):
+        curl = None
+        curr = None
+        for (id,(ctx,boundl,boundr)) in self.__annotations.iteritems():
+            if id is exclude:
+                continue
+            if boundl > x and (curr is None or curr[1] > boundl):
+                curr = (id,boundl)
+            if boundr < x and (curl is None or curl[1] < boundr):
+                curl = (id,boundr)
+        return (curl,curr)
+    def update_annotation(self,ind,boundl,boundr):
+        (ctx,oldl,oldr) = self.__annotations[ind]
+        self.__annotations[ind] = (ctx,boundl,boundr)
+        (color,entries) = self.__contexts[ctx]
+        self.emit('annotation-changed',ind,ctx,color,boundl,boundr)
     def write(self,fn):
         utc = UTC()
         with open(fn,'w') as h:

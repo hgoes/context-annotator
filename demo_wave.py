@@ -14,50 +14,10 @@ from dateentry import DateEdit
 from timezone import UTC
 from annotation import Annotations
 from display import Display
-
+from inputstate import InputState
 gettext.install('context-annotator','po')
 
 from sources import *
-
-class InputState:
-    def __init__(self,par):
-        self.bounds = None
-        self.tmpl = 0.0
-        self.tmpr = 0.0
-        self.par = par
-        self.bound_change = False
-        self.selection = None
-    def propagate_marker(self):
-        for d in self.par.displays:
-            d.update_spanner(self.tmpl,self.tmpr)
-    def bound_change_start(self,loc):
-        self.tmpl = loc
-        self.tmpr = loc
-        self.propagate_marker()
-        self.bound_change = True
-    def bound_change_update(self,loc):
-        if self.bound_change:
-            self.tmpr = loc
-            self.propagate_marker()
-    def bound_change_end(self,loc):
-        if self.bound_change:
-            self.tmpr = loc
-            if self.tmpl < self.tmpr:
-                self.bounds = (self.tmpl,self.tmpr)
-            elif self.tmpl > self.tmpr:
-                self.bounds = (self.tmpr,self.tmpl)
-            else:
-                self.bounds = None
-            self.propagate_marker()
-            self.bound_change = False
-    def select(self,loc,time,display):
-        if self.bounds != None:
-            if loc >= self.bounds[0] and loc <= self.bounds[1]:
-                self.selection = True
-                self.par.notify_select(time,display)
-                return
-        self.selection = self.par.find_annotation(loc)
-        self.par.notify_select(time,display)
 
 class CtxAnnotator(gtk.VBox):
     def __init__(self):
@@ -72,7 +32,9 @@ class CtxAnnotator(gtk.VBox):
 
         self.display_box = gtk.VBox()
         self.context_box = gtk.HBox()
-        self.input_state = InputState(self)
+        self.input_state = InputState(self.annotations)
+        self.input_state.connect('select-selection',self.show_selection_menu)
+        self.input_state.connect('select-annotation',self.show_annotation_menu)
         add_button = gtk.Button(stock='gtk-add')
         add_button.connect('clicked',lambda but: self.create_context())
         self.context_box.pack_start(add_button,expand=False,fill=True)
@@ -139,11 +101,10 @@ class CtxAnnotator(gtk.VBox):
         self.xmax = xmax
         if not xmin is None:
             self.policy.update_min(xmin)
-            self.input_state.propagate_marker()
         self.update_zoom()
 
     def add_source(self,src):
-        disp = Display(self.input_state,src,self.annotations)
+        disp = Display(self.input_state,src,self.annotations,self.input_state)
         self.displays.append(disp)
         frame = gtk.Table(3,2)
         cont = gtk.Frame()
@@ -165,6 +126,7 @@ class CtxAnnotator(gtk.VBox):
     def remove_source_handler(self,but,frame,display):
         self.display_box.remove(frame)
         self.displays.remove(display)
+        frame.destroy()
         self.recalculate()
     def add_context(self,name):
         self.annotations.add_context(name)
@@ -195,20 +157,17 @@ class CtxAnnotator(gtk.VBox):
     def add_annotation(self,name,start,end):
         self.annotations.add_annotation(name,start,end)
     def create_annotation(self,name):
-        if self.input_state.bounds != None:
-            (start,end) = self.input_state.bounds
+        if self.input_state.selection is not None:
+            (start,end) = self.input_state.selection
             self.add_annotation(name,start,end)
-    def notify_select(self,time,display):
-        if self.input_state.selection is None:
-            pass
-        elif self.input_state.selection is True:
-            menu = SelectionMenu(self,display)
-            menu.show_all()
-            menu.popup(None,None,None,3,time)
-        else:
-            menu = AnnotationMenu(self)
-            menu.show_all()
-            menu.popup(None,None,None,3,time)
+    def show_selection_menu(self,state,display,boundl,boundr,time):
+        menu = SelectionMenu(self,display)
+        menu.show_all()
+        menu.popup(None,None,None,3,time)
+    def show_annotation_menu(self,state,display,id,time):
+        menu = AnnotationMenu(self,id)
+        menu.show_all()
+        menu.popup(None,None,None,3,time)
     def remove_annotation(self,id):
         self.annotations.remove_annotation(id)
     def write_out(self,fn):
@@ -294,10 +253,9 @@ class SelectionMenu(gtk.Menu):
         scikits.audiolab.play(data[0],data[1])
 
 class AnnotationMenu(gtk.Menu):
-    def __init__(self,par):
+    def __init__(self,par,sel):
         gtk.Menu.__init__(self)
         it = gtk.ImageMenuItem(gtk.STOCK_DELETE)
-        sel = par.input_state.selection
         it.connect('activate',lambda w,id: par.remove_annotation(id),sel)
         self.append(it)
 
@@ -354,16 +312,20 @@ class Application(gtk.Window):
         about_item.connect('activate',lambda x: self.show_about())
         help_menu.append(about_item)
     
-        status = gtk.Statusbar()
-
+        self.status = gtk.Statusbar()
+        
         layout = gtk.VBox()
         layout.pack_start(bar,expand=False,fill=True)
 
         self.add(layout)
         
         self.annotator = CtxAnnotator()
+        self.annotator.input_state.connect('message-changed',self.set_message)
         layout.pack_start(self.annotator,expand=True,fill=True)
-        layout.pack_start(status,expand=False,fill=True)
+        layout.pack_start(self.status,expand=False,fill=True)
+    def set_message(self,state,str):
+        ctx = self.status.get_context_id("coords")
+        self.status.push(ctx,str)
     def save(self):
         dialog = gtk.FileChooserDialog(title=_("Save annotation"),
                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
