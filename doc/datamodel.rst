@@ -5,4 +5,3 @@ The data model
    :members:
    :show-inheritance:
 
-   
