@@ -1,3 +1,7 @@
+"""
+The data model
+==============
+"""
 import gobject
 import calendar
 import datetime
