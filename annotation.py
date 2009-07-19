@@ -32,9 +32,9 @@ class AnnotationsMeta(gobject.GObjectMeta):
 
 
 class Annotations(gobject.GObject):
-    """\
+    """
     Provides the data model for annotations.
-    It keeps track of all annotations and informs listeners if something changed.\
+    It keeps track of all annotations and informs listeners if something changed.
     """
     __metaclass__ = AnnotationsMeta
     def __init__(self):
@@ -45,15 +45,15 @@ class Annotations(gobject.GObject):
         self.__colors = ['red','green','yellow','orange']
     def add_annotation(self,ctx,boundl,boundr):
         """
-        :param ctx: The context name\n
-        :type ctx: string\n
-        :param boundl: The start time\n
-        :type boundl: float\n
-        :param boundr: The end time\n
-        :type boundr: float\n
-        :returns: The id of the new annotation\n
-        :rtype: int\n
-        \n
+        :param ctx: The context name
+        :type ctx: string
+        :param boundl: The start time
+        :type boundl: float
+        :param boundr: The end time
+        :type boundr: float
+        :returns: The id of the new annotation
+        :rtype: int
+        
         Adds a new annotation for the context *ctx* and the start time *boundl* and end time *boundr*. """
         if ctx not in self.__contexts:
             self.add_context(ctx)
@@ -66,9 +66,9 @@ class Annotations(gobject.GObject):
         return id
     def remove_annotation(self,id):
         """
-        :param id: The id of the annotation to be removed\n
-        :type id: int\n
-        \n
+        :param id: The id of the annotation to be removed
+        :type id: int
+        
         Removes an annotation from the model. """
         (ctx,boundl,boundr) = self.__annotations[id]
         (color,entries) = self.__contexts[ctx]
@@ -77,11 +77,11 @@ class Annotations(gobject.GObject):
         self.emit('annotation-removed',id)
     def add_context(self,ctx):
         """
-        :param ctx: Name of the new context\n
-        :type ctx: string\n
-        :returns: Generated color for the context\n
-        :rtype: string\n
-        \n
+        :param ctx: Name of the new context
+        :type ctx: string
+        :returns: Generated color for the context
+        :rtype: string
+        
         Adds a new context type to the model and generates a color for it. If the context already exists the color is looked up."""
         if ctx not in self.__contexts:
             color = self.free_color()
