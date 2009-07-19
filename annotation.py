@@ -30,7 +30,12 @@ class AnnotationsMeta(gobject.GObjectMeta):
                            (gobject.TYPE_INT,gobject.TYPE_STRING,gobject.TYPE_STRING,gobject.TYPE_DOUBLE,gobject.TYPE_DOUBLE))
         gobject.type_register(cls)
 
+
 class Annotations(gobject.GObject):
+    """\
+    Provides the data model for annotations.
+    It keeps track of all annotations and informs listeners if something changed.\
+    """
     __metaclass__ = AnnotationsMeta
     def __init__(self):
         gobject.GObject.__init__(self)
@@ -39,6 +44,17 @@ class Annotations(gobject.GObject):
         self.__counter = 0
         self.__colors = ['red','green','yellow','orange']
     def add_annotation(self,ctx,boundl,boundr):
+        """
+        :param ctx: The context name\n
+        :type ctx: string\n
+        :param boundl: The start time\n
+        :type boundl: float\n
+        :param boundr: The end time\n
+        :type boundr: float\n
+        :returns: The id of the new annotation\n
+        :rtype: int\n
+        \n
+        Adds a new annotation for the context *ctx* and the start time *boundl* and end time *boundr*. """
         if ctx not in self.__contexts:
             self.add_context(ctx)
         id = self.__counter
@@ -49,12 +65,24 @@ class Annotations(gobject.GObject):
         self.emit('annotation-added',id,color,boundl,boundr)
         return id
     def remove_annotation(self,id):
+        """
+        :param id: The id of the annotation to be removed\n
+        :type id: int\n
+        \n
+        Removes an annotation from the model. """
         (ctx,boundl,boundr) = self.__annotations[id]
         (color,entries) = self.__contexts[ctx]
         entries.remove(id)
         del self.__annotations[id]
         self.emit('annotation-removed',id)
     def add_context(self,ctx):
+        """
+        :param ctx: Name of the new context\n
+        :type ctx: string\n
+        :returns: Generated color for the context\n
+        :rtype: string\n
+        \n
+        Adds a new context type to the model and generates a color for it. If the context already exists the color is looked up."""
         if ctx not in self.__contexts:
             color = self.free_color()
             if color is None:
