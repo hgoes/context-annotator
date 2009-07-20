@@ -27,6 +27,14 @@ class Display(FigureCanvas):
     :type state: :class:`inputstate.InputState`
 
     Provides a visual representation of both a data-source and the annotations.
+
+    +---------------------+------------------------+-------------------------+
+    |Signal               | Signature              | Description             |
+    +=====================+========================+=========================+
+    |"cursor-move"        |:class:`float`,         | Called when the curor   |
+    |                     |:class:`float`          | is moved. Gives the x-  |
+    |                     |                        | y-coordinate.           |
+    +---------------------+------------------------+-------------------------+
     """
     __metaclass__ = DisplayMeta
     def __init__(self,src,model,state):
