@@ -1,4 +1,8 @@
-""" This module defines sources to be used for displays.
+"""
+Data sources
+============
+
+This module defines sources to be used for displays.
 They basically provide a constructor with the data source (for example a file) and give the informations to be rendered via the getX() and getY() methods. """
 
 import numpy as np
@@ -8,17 +12,69 @@ import wave
 from scikits.audiolab import Sndfile
 
 class Source:
-    def getName(self): abstract
-    def getX(self): abstract
-    def getY(self): abstract
-    def xBounds(self): abstract
-    def yBounds(self): abstract
-    def hasCapability(self,name): abstract
-    def getPlayData(self,start,end): abstract
-
-""" Provides audio level data from a sound source (everything that audiolab supports) """
+    """ An abstract base class for all sources. """
+    def getName(self):
+        """
+        :returns: a displayable name for the source
+        :rtype: :class:`str`
+        """
+        abstract
+    def getX(self):
+        """
+        :returns: an array containing the x-axis data
+        :rtype: :class:`numpy.ndarray`
+        """
+        abstract
+    def getY(self):
+        """
+        :returns: an array containing the y-axis data
+        :rtype: :class:`numpy.ndarray`
+        """
+        abstract
+    def xBounds(self):
+        """
+        :returns: The minimal and maximal x-value
+        :rtype: (:class:`float`, :class:`float`)
+        """
+        abstract
+    def yBounds(self):
+        """
+        :returns: The minimal and maximal y-value
+        :rtype: (:class:`float`, :class:`float`)
+        """
+        abstract
+    def hasCapability(self,name):
+        """
+        :param name: The name of the capability
+        :type name: :class:`str`
+        :returns: Whether the source supports the capability
+        :rtype: :class:`bool`
+        """
+        abstract
+    def getPlayData(self,start,end):
+        """
+        :param start: timestamp when the audio-data should start
+        :type start: :class:`float`
+        :param end: timestamp when the audio-data should end
+        :type end: :class:`float`
+        :returns: The audio data
+        :rtype: :class:`numpy.ndarray`
+        
+        Note that this must only be implemented if the source has the capability 'play'.
+        """
+        abstract
 
 class SoundSource(Source):
+    """
+    :param fn: The filename from which to load the data
+    :type fn: :class:`str`
+    :param offset: A timestamp representing when the audiodata starts
+    :type offset: :class:`float`
+    :param chan: The audio channel from which to extract the data
+    :type chan: :class:`int`
+    
+    Provides audio level data from a sound source (everything that audiolab supports).
+    """
     def __init__(self,fn,offset=datetime.date.min,chan=0):
         
         file = Sndfile(fn)
@@ -59,6 +115,14 @@ class SoundSource(Source):
         return (self.frames[int(fstart*self.samplerate):int(fend*self.samplerate)].T,self.samplerate)
 
 class MovementSource(Source):
+    """
+    :param fn: The filename with the movement data
+    :type fn: :class:`str`
+    :param axis: The movement axis whose data we want (0=x,1=y,2=z)
+    :type axis: :class:`int`
+
+    Provides sensory input data of a acceleration sensor.
+    """
     def __init__(self,fn,axis=0):
         f = open(fn,'r')
         lines = f.readlines()
