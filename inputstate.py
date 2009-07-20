@@ -1,7 +1,16 @@
+"""
+The input state
+===============
+"""
 import gobject
 from matplotlib.dates import num2date
 
 class Viewing:
+    """
+    :param par: The parent container
+    :type par: :class:`InputState`
+    
+    The default state. The user hasn't done anything and we're waiting for an action. """
     def __init__(self,par):
         self.parent = par
     def _get_limits(self,x,exclude=None):
@@ -53,6 +62,17 @@ class Limited:
             return x
 
 class Selecting(Limited):
+    """
+    :param par: The parent container
+    :type par: :class:`InputState`
+    :param x: The coordinate where the user started selecting
+    :type x: :class:`float`
+    :param limitl: The left-side limit of the selection or :const:`None` if there is no limit
+    :type limitl: :class:`float`
+    :param limitr: The right-side limit of the selection or :const:`None` if there is no limit
+    :type limitr: :class:`float`
+    
+    The user has begun selecting a region. Waiting until she/he releases the mouse."""
     def __init__(self,par,x,limitl,limitr):
         self.parent = par
         self.start = x
@@ -76,6 +96,21 @@ class Selecting(Limited):
         return self
 
 class Dragging(Limited):
+    """
+    :param par: The parent container
+    :type par: :class:`InputState`
+    :param id: The id of the annotation
+    :type id: :class:`int`
+    :param width: The width of the annotation
+    :type width: :class:`float`
+    :param drag_offset: The offset from the left border of the annotation where the user clicked
+    :type drag_offset: :class:`float`
+    :param limitl: The left-side limit of the dragging operation, or :const:`None` if there's none
+    :type limitl: :class:`float`
+    :param limitr: The right-side limit of the dragging operation, or :const:`None` if there's none
+    :type limitr: :class:`float`
+    
+    The user begun to drag an annotation around. We're waiting for him/her to release the mouse. """
     def __init__(self,par,id,width,drag_offset,limitl,limitr):
         self.parent = par
         self.id = id
@@ -106,6 +141,22 @@ class Dragging(Limited):
         return self
 
 class Resizing(Limited):
+    """
+    :param par: The parent container
+    :type par: :class:`InputState`
+    :param id: The id of the annotation that is being resized
+    :type id: :class:`int`
+    :param which: Which side of the annotation is dragged: :const:`False` for left, :const:`True` for right
+    :type which: :class:`bool`
+    :param drag_offset: The offset from the left border of the annotation where the user clicked
+    :type drag_offset: :class:`float`
+    :param other: The coordinate of the other side of the annotation
+    :type other: :class:`float`
+    :param limit: The limit on the resizing operation, :const:`None` if there is no limit
+    :type limit: :class:`float`
+
+    The user has clicked on the border of an annotation and thus is resizing the annotation.
+    """
     def __init__(self,par,id,which,drag_offset,other,limit):
         self.parent = par
         self.id = id
@@ -171,6 +222,43 @@ class InputStateMeta(gobject.GObjectMeta):
         gobject.type_register(cls)
 
 class InputState(gobject.GObject):
+    """
+    :param model: The model on which to operate
+    :type model: :class:`annotation.Annotations`
+    
+    Represents the current state of input processing
+
+    +---------------------+------------------------+-------------------------+
+    |Signal               | Signature              | Description             |
+    +=====================+========================+=========================+
+    |"selection-changed"  |:class:`float`,         | Called whenever the user|
+    |                     |:class:`float`          | selects an area. Gives  |
+    |                     |                        | the time bounds as      |
+    |                     |                        | parameter.              |
+    +---------------------+------------------------+-------------------------+
+    |"selection-removed"  |                        | Called when the         |
+    |                     |                        | selection is removed.   |
+    +---------------------+------------------------+-------------------------+
+    |"message-changed"    |:class:`str`            | Called when there's a   |
+    |                     |                        | new information for the |
+    |                     |                        | user (e.g. statusbar).  |
+    +---------------------+------------------------+-------------------------+
+    |"select-selection"   |:class:`display.Display`| Called when the user    |
+    |                     |, :class:`float`,       | right-clicks the        |
+    |                     |:class:`float`,         | selected area in a      |
+    |                     |:class:`int`            | certain display.        |
+    +---------------------+------------------------+-------------------------+
+    |"select-annotation"  |:class:`display.Display`| Called when the user    |
+    |                     |, :class:`int`,         | right-clicks an         |
+    |                     |:class:`int`            | annotation in a certain |
+    |                     |                        | display.                |
+    +---------------------+------------------------+-------------------------+
+    
+    .. attribute:: state
+    
+       Contains the current state of the input processing.
+       Can be one of :class:`Viewing`, :class:`Selecting`, :class:`Dragging` or :class:`Resizing`
+    """
     __metaclass__ = InputStateMeta
     def __init__(self,model):
         gobject.GObject.__init__(self)
@@ -178,6 +266,12 @@ class InputState(gobject.GObject):
         self.model = model
         self.selection = None
     def set_selection(self,new):
+        """
+        :param new: The new selection as two time-bounds or :const:`None`
+        :type new: :class:`None` or (:class:`float`, :class:`float`)
+
+        Sets the selection to a new value. Informs listeners about this.
+        """
         self.selection = new
         if new is None:
             self.emit('selection-removed')

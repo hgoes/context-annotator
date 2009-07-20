@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    datamodel
+   inputstate
 
 Indices and tables
 ==================
