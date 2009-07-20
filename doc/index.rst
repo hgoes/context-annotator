@@ -13,6 +13,7 @@ Contents:
 
    datamodel
    inputstate
+   display
 
 Indices and tables
 ==================

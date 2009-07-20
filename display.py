@@ -1,3 +1,7 @@
+"""
+The display component
+=====================
+"""
 import gobject
 import gtk
 from matplotlib.figure import Figure
@@ -14,11 +18,20 @@ class DisplayMeta(gobject.GObjectMeta):
         gobject.type_register(cls)
 
 class Display(FigureCanvas):
+    """
+    :param src: The data-source to be displayed
+    :type src: :class:`sources.Source`
+    :param model: The annotation data-model to be displayed
+    :type model: :class:`annotation.Annotations`
+    :param state: The application's input state to be manipulated
+    :type state: :class:`inputstate.InputState`
+
+    Provides a visual representation of both a data-source and the annotations.
+    """
     __metaclass__ = DisplayMeta
-    def __init__(self,par,src,model,state):
+    def __init__(self,src,model,state):
         self.src = src
         self.model = model
-        self.click_handler = par
         self.__state = state
         state.connect('selection-changed',self.update_spanner)
         state.connect('selection-removed',self.remove_spanner)

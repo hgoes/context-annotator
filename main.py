@@ -104,7 +104,7 @@ class CtxAnnotator(gtk.VBox):
         self.update_zoom()
 
     def add_source(self,src):
-        disp = Display(self.input_state,src,self.annotations,self.input_state)
+        disp = Display(src,self.annotations,self.input_state)
         self.displays.append(disp)
         frame = gtk.Table(3,2)
         cont = gtk.Frame()

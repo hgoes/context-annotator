@@ -7,9 +7,18 @@ from matplotlib.dates import date2num,num2date
 import wave
 from scikits.audiolab import Sndfile
 
+class Source:
+    def getName(self): abstract
+    def getX(self): abstract
+    def getY(self): abstract
+    def xBounds(self): abstract
+    def yBounds(self): abstract
+    def hasCapability(self,name): abstract
+    def getPlayData(self,start,end): abstract
+
 """ Provides audio level data from a sound source (everything that audiolab supports) """
 
-class SoundSource:
+class SoundSource(Source):
     def __init__(self,fn,offset=datetime.date.min,chan=0):
         
         file = Sndfile(fn)
@@ -49,7 +58,7 @@ class SoundSource:
         fend = rend.microseconds*0.000001 + rend.seconds + rend.days*24*3600
         return (self.frames[int(fstart*self.samplerate):int(fend*self.samplerate)].T,self.samplerate)
 
-class MovementSource:
+class MovementSource(Source):
     def __init__(self,fn,axis=0):
         f = open(fn,'r')
         lines = f.readlines()
