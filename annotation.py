@@ -262,8 +262,18 @@ class Annotations(gobject.GObject):
         self.clear()
         utc = UTC()
         with open(fn,'r') as h:
+            c = 0
             for ln in h:
+                c += 1
+                words = ln.split()
+                if len(words) is not 3:
+                    raise IOError("Line "+str(c)+" of "+fn+" has "+str(len(words))+" columns (must have 3)")
                 (name,start,end) = ln.split()
-                self.add_annotation(name,
-                                    date2num(datetime.datetime.utcfromtimestamp(float(start))),
-                                    date2num(datetime.datetime.utcfromtimestamp(float(end))))
+                try:
+                    tstart = date2num(datetime.datetime.utcfromtimestamp(float(start)))
+                    tend = date2num(datetime.datetime.utcfromtimestamp(float(end)))
+                except ValueError:
+                    raise IOError("Line "+str(c)+" of "+fn+" contains invalid timestamps")
+                
+                self.add_annotation(name,tstart,tend)
+

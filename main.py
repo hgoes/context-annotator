@@ -178,7 +178,14 @@ class CtxAnnotator(gtk.VBox):
     def write_out(self,fn):
         self.annotations.write(fn)
     def read_in(self,fn):
-        self.annotations.read(fn)
+        try:
+            self.annotations.read(fn)
+        except Exception as e:
+            warning = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
+                                        buttons=gtk.BUTTONS_OK,
+                                        message_format=str(e))
+            warning.run()
+            warning.destroy()
 
 class ScalePolicy:
     def __init__(self):
