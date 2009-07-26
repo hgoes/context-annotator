@@ -1,6 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8
 
+"""
+Main Application
+================
+"""
+
 import numpy as np
 #import matplotlib.pyplot as plt
 import gtk
@@ -350,8 +355,15 @@ class Application(gtk.Window):
         dialog = LoadSourceDialog()
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
-            src = dialog.get_source()
-            self.annotator.add_source(src)
+            try:
+                src = dialog.get_source()
+                self.annotator.add_source(src)
+            except Exception as e:
+                warning = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
+                                            buttons=gtk.BUTTONS_OK,
+                                            message_format=str(e))
+                warning.run()
+                warning.destroy()
         dialog.destroy()
     def run(self):
         self.show_all()
