@@ -88,12 +88,19 @@ class SoundSource(Source):
         self.offset = offset
         self.channel = chan
 
-    def getY(self,sampling=10000):
-        return self.frames[::sampling,self.channel] #[...,self.channel]
-    def getX(self,sampling=10000):
+        self.skiping = self.nframes / 10000
+        if self.skiping == 0:
+            self.skiping = 1
+        
+    def getY(self):
+        if self.channels == 2:
+            return self.frames[::self.skiping,self.channel] #[...,self.channel]
+        else:
+            return self.frames[::self.skiping]
+    def getX(self):
         #numd = date2num(self.offset)
         return np.fromiter([ date2num(self.offset + datetime.timedelta(seconds = float(i)/self.samplerate))
-                             for i in range(0,self.nframes,sampling)],dtype=np.dtype(np.float))
+                             for i in range(0,self.nframes,self.skiping)],dtype=np.dtype(np.float))
     def xBounds(self):
         d1 = self.offset
         d2 = d1 + datetime.timedelta(seconds = float(self.nframes)/self.samplerate)
