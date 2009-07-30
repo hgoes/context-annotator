@@ -60,7 +60,7 @@ class DateEditMeta(gobject.GObjectMeta):
 class DateEdit(gtk.HBox):
     __metaclass__ = DateEditMeta
 
-    def __init__(self, the_time = None, show_time = True, use_24_format = True):
+    def __init__(self, the_time = None, show_time = True, show_seconds = True, use_24_format = True):
         gtk.HBox.__init__(self)
 
         # register custom signals, help can anyone explain this call parameters?
@@ -74,6 +74,7 @@ class DateEdit(gtk.HBox):
         self.__flag_show_time = show_time
         self.__flag_use_24_format = use_24_format
         self.__flag_week_starts_monday = False
+        self.__flag_show_seconds = show_seconds
 
         # the date entry
         self.__date_entry = gtk.Entry()
@@ -174,6 +175,18 @@ class DateEdit(gtk.HBox):
                 self.__calendar.set_display_options(self.__calendar.get_display_options() | gtk.CALENDAR_WEEK_START_MONDAY)
             else:
                 self.__calendar.set_display_options(self.__calendar.get_display_options() & ~gtk.CALENDAR_WEEK_START_MONDAY)
+    def get_date_format(self):
+        if self.__flag_use_24_format:
+            if self.__flag_show_seconds:
+                return '%H:%M:%S'
+            else:
+                return '%H:%M'
+        else:
+            if self.__flag_show_seconds:
+                return '%I:%M:%S %p'
+            else:
+                return '%I:%M %p'
+
     def set_date_time(self, the_time):      
         if the_time is None:
             the_time = datetime.datetime.today()
@@ -182,11 +195,7 @@ class DateEdit(gtk.HBox):
         self.__initial_time = the_time
         self.__date_entry.set_text(the_time.strftime('%x'))
         # set the time
-        if self.__flag_use_24_format:
-            self.__time_entry.set_text(the_time.strftime('%H:%M'))
-        else:
-            self.__time_entry.set_text(the_time.strftime('%I:%M %p'))
-
+        self.__time_entry.set_text(the_time.strftime(self.get_date_format()))
 
     def popup_grab_on_window(self, window, activate_time):
         if gdk.pointer_grab(window, True, gdk.BUTTON_PRESS_MASK 
@@ -304,10 +313,7 @@ class DateEdit(gtk.HBox):
         self.__time_entry.set_text(str)
         self.emit('time_changed', None);
     def get_datetime(self):
-        if self.__flag_use_24_format:
-            format_time = '%H:%M'
-        else:
-            format_time = '%I:%M %p'
+        format_time = self.get_date_format()
         dt = datetime.datetime.strptime(self.__time_entry.get_text()+' '+self.__date_entry.get_text(),format_time+' %x')
         iter = self.__timezone_popup.get_active_iter()
         model = self.__timezone_popup.get_model()
@@ -330,21 +336,25 @@ class DateEdit(gtk.HBox):
         # PROP_UPPER_HOUR
 
 class TimeTree(gtk.TreeStore):
-    def __init__(self,lower,upper,use_24_format=True):
+    def __init__(self,lower,upper,use_24_format=True,show_seconds=True):
+        if use_24_format:
+            if show_seconds:
+                fmt = '%H:%M:%S'
+            else:
+                fmt = '%H:%M'
+        else:
+            if show_seconds:
+                fmt = '%I:%M:%S %p'
+            else:
+                fmt = '%I:%M %p'
         gtk.TreeStore.__init__(self,gobject.TYPE_STRING)
         for h in range(lower,upper+1):
             the_time = datetime.time(h,0)
-            if use_24_format:
-                label = the_time.strftime('%H:%M')
-            else:
-                label = the_time.strftime('%I:%M %p')
+            label = the_time.strftime(fmt)
             iter = self.insert(None,-1,[label])
             for m in range(15,60,15):
                 the_time = datetime.time(h,m)
-                if use_24_format:
-                    label = the_time.strftime('%H:%M')
-                else:
-                    label = the_time.strftime('%I:%M %p')
+                label = the_time.strftime(fmt)
                 self.insert(iter,-1,[label])
 
 class TimezoneTree(gtk.TreeStore):
