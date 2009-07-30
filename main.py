@@ -254,7 +254,7 @@ class SelectionMenu(gtk.Menu):
         self.append(ann)
         if display.src.hasCapability("play"):
             play_it = gtk.ImageMenuItem(stock_id=gtk.STOCK_MEDIA_PLAY)
-            (start,end) = par.input_state.bounds
+            (start,end) = par.input_state.selection
             play_it.connect('activate',self.play_annotation,
                             display,
                             num2date(start,UTC()),
