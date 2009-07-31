@@ -186,6 +186,8 @@ class CtxAnnotator(gtk.VBox):
                                         message_format=str(e))
             warning.run()
             warning.destroy()
+    def export(self,fn):
+        self.annotations.export(fn,[disp.src for disp in self.displays])
 
 class ScalePolicy:
     def __init__(self):
@@ -292,8 +294,11 @@ class Application(gtk.Window):
         save_item = gtk.ImageMenuItem(gtk.STOCK_SAVE)
         save_item.connect('activate',lambda x: self.save())
         save_item.add_accelerator('activate',accel,115,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
+        export_item = gtk.ImageMenuItem(gtk.STOCK_CONVERT)
+        export_item.connect('activate',lambda x: self.export())
         file_menu.append(open_item)
         file_menu.append(save_item)
+        file_menu.append(export_item)
         
         source_item = gtk.MenuItem(label=_('_Sources'))
         bar.append(source_item)
@@ -345,8 +350,6 @@ class Application(gtk.Window):
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             self.annotator.write_out(dialog.get_filename())
-        elif response == gtk.RESPONSE_CANCEL:
-            pass
         dialog.destroy()
     def load(self):
         dialog = gtk.FileChooserDialog(title=_("Load annotation"),
@@ -355,8 +358,14 @@ class Application(gtk.Window):
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             self.annotator.read_in(dialog.get_filename())
-        elif response == gtk.RESPONSE_CANCEL:
-            pass
+        dialog.destroy()
+    def export(self):
+        dialog = gtk.FileChooserDialog(title=_("Export annotation"),
+                                       action=gtk.FILE_CHOOSER_ACTION_SAVE,
+                                       buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            self.annotator.export(dialog.get_filename())
         dialog.destroy()
     def load_source(self):
         dialog = LoadSourceDialog()

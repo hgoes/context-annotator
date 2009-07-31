@@ -19,13 +19,13 @@ class Source:
         :rtype: :class:`str`
         """
         abstract
-    def getX(self):
+    def getX(self,sampled=True):
         """
         :returns: an array containing the x-axis data
         :rtype: :class:`numpy.ndarray`
         """
         abstract
-    def getY(self):
+    def getY(self,sampled=True):
         """
         :returns: an array containing the y-axis data
         :rtype: :class:`numpy.ndarray`
@@ -41,6 +41,12 @@ class Source:
         """
         :returns: The minimal and maximal y-value
         :rtype: (:class:`float`, :class:`float`)
+        """
+        abstract
+    def shortIdentifier(self):
+        """
+        :returns: A one or two letter word that identifies the source-class
+        :rtype: :class:`str`
         """
         abstract
     def hasCapability(self,name):
@@ -92,15 +98,24 @@ class SoundSource(Source):
         if self.skiping == 0:
             self.skiping = 1
         
-    def getY(self):
-        if self.channels == 2:
-            return self.frames[::self.skiping,self.channel] #[...,self.channel]
+    def getY(self,sampled=True):
+        if sampled:
+            if self.channels == 2:
+                return self.frames[::self.skiping,self.channel] #[...,self.channel]
+            else:
+                return self.frames[::self.skiping]
         else:
-            return self.frames[::self.skiping]
-    def getX(self):
-        #numd = date2num(self.offset)
-        return np.fromiter([ date2num(self.offset + datetime.timedelta(seconds = float(i)/self.samplerate))
-                             for i in range(0,self.nframes,self.skiping)],dtype=np.dtype(np.float))
+            if self.channels == 2:
+                return self.frames[::,self.channel]
+            else:
+                return self.frames
+    def getX(self,sampled=True):
+        if sampled:
+            return np.fromiter([ date2num(self.offset + datetime.timedelta(seconds = float(i)/self.samplerate))
+                                 for i in range(0,self.nframes,self.skiping)],dtype=np.dtype(np.float))
+        else:
+            return np.fromiter([ date2num(self.offset + datetime.timedelta(seconds = float(i)/self.samplerate))
+                                 for i in range(0,self.nframes)],dtype=np.dtype(np.float))
     def xBounds(self):
         d1 = self.offset
         d2 = d1 + datetime.timedelta(seconds = float(self.nframes)/self.samplerate)
@@ -109,6 +124,8 @@ class SoundSource(Source):
         return (self.frames[self.channel::2].min(),self.frames[self.channel::2].max())
     def getName(self):
         return self.name
+    def shortIdentifier(self):
+        return "a"
     def hasCapability(self,name):
         if name=="play":
             return True
@@ -138,6 +155,7 @@ class MovementSource(Source):
         self.timedata = np.empty(sz,np.dtype(np.float))
         self.xdata = np.empty((sz,2),np.dtype(np.float))
         self.name = fn
+        self.axis = axis
         for i in range(sz):
             (timestamp,ms,xv,xd,yv,yd,zv,zd) = lines[i].split()
             self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(int(timestamp))
@@ -151,9 +169,9 @@ class MovementSource(Source):
             elif axis==2:
                 self.xdata[i,0] = float(zv)
                 self.xdata[i,1] = float(zd)
-    def getX(self):
+    def getX(self,sampled=True):
         return self.timedata
-    def getY(self):
+    def getY(self,sampled=True):
         return self.xdata
     def xBounds(self):
         sz = self.timedata.size
@@ -164,5 +182,12 @@ class MovementSource(Source):
         return (self.xdata.min(),self.xdata.max())
     def getName(self):
         return self.name
+    def shortIdentifier(self):
+        if self.axis == 0:
+            return "x"
+        elif self.axis == 1:
+            return "y"
+        elif self.axis == 2:
+            return "z"
     def hasCapability(self,name):
         return False

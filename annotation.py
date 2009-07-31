@@ -5,6 +5,8 @@ The data model
 import gobject
 import calendar
 import datetime
+import heapq
+import copy
 from matplotlib.dates import date2num,num2date
 from timezone import UTC
 
@@ -277,3 +279,66 @@ class Annotations(gobject.GObject):
                 
                 self.add_annotation(name,tstart,tend)
 
+    def export(self,fn,sources):
+        utc = UTC()
+        with open(fn,'w') as h:
+            source_state = [SourceReadingState(src) for src in sources]
+            heapq.heapify(source_state)
+            ann_lst = self.__annotations.values()
+            ann_lst.sort(cmp=lambda (name1,start1,end1),(name2,start2,end2): cmp(start1,start2))
+            ann_state = dict()
+            
+            while len(source_state) > 0:
+                ak = source_state[0].pop()
+                if ak is None:
+                    heapq.heappop(source_state)
+                    continue
+                while(len(ann_lst) > 0 and ann_lst[0][2] < ak[0]):
+                    key = ann_lst[0][0]
+                    if key in ann_state:
+                        print "Deactivate ",key
+                        del ann_state[key]
+                    ann_lst.pop()
+                for (k,i) in ann_state.items():
+                    if i < ak[0]:
+                        print "Deactivate ",k
+                        del ann_state[k]
+                while(len(ann_lst) > 0 and ann_lst[0][1] < ak[0]):
+                    print "Activate ",ann_lst[0][0]
+                    ann_state[ann_lst[0][0]] = ann_lst[0][2]
+                    #ann_lst.pop()
+                    del ann_lst[0]
+                cur_date = num2date(ak[0],utc)
+                h.write(str(calendar.timegm(cur_date.utctimetuple())))
+                h.write(cur_date.strftime(".%f"))
+                h.write("\t")
+                h.write(",".join(ann_state.keys()))
+                h.write("\t")
+                h.write(source_state[0].name)
+                h.write("\t")
+                h.write(str(ak[1]))
+                h.write("\n")
+                heapq.heapreplace(source_state,source_state[0])
+            
+
+class SourceReadingState:
+    def __init__(self,src):
+        self.name = src.shortIdentifier()
+        self.xdata = src.getX(False)
+        self.ydata = src.getY(False)
+        if self.ydata.shape[0]!=0:
+            self.ydata = self.ydata[::,0]
+        self.idx = 0
+    def __cmp__(self,other):
+        if self.idx < len(self.xdata):
+            return cmp(self.xdata[self.idx],other.xdata[self.idx])
+        else:
+            return -1
+    def cur(self):
+        if self.idx < len(self.xdata):
+            return (self.xdata[self.idx],self.ydata[self.idx])
+        else:
+            return None
+    def pop(self):
+        self.idx += 1
+        return self.cur()
