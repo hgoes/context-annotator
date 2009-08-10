@@ -194,7 +194,11 @@ class ScalePolicy:
         self.scales = [(_("Hour"),hours(1),MinuteLocator(interval=10)),
                        (_("Half-hour"),minutes(30),MinuteLocator(interval=5)),
                        (_("10-Minute"),minutes(10),MinuteLocator(interval=2)),
-                       (_("Minute"),minutes(1),SecondLocator(interval=10))
+                       (_("5-Minute"),minutes(5),MinuteLocator(interval=1)),
+                       (_("2-Minute"),minutes(2),SecondLocator(interval=20)),
+                       (_("Minute"),minutes(1),SecondLocator(interval=10)),
+                       (_("30-Seconds"),minutes(0.5),SecondLocator(interval=5)),
+                       (_("12-Seconds"),minutes(0.2),SecondLocator(interval=2))
                        ]
         self.cur = 0
         self.pos = None
@@ -482,11 +486,14 @@ class LoadSourceDialog(gtk.Dialog):
             return None
         if self.opt_movement.get_active():
             if self.opt_axis_x.get_active():
-                axis = 0
+                axis = 0 
+                fn = fn 
             elif self.opt_axis_y.get_active():
                 axis = 1
+                fn = fn 
             else:
                 axis = 2
+                fn = fn 
             return MovementSource(fn,axis)
         else:
             offset = self.date_entry.get_datetime()

@@ -154,19 +154,21 @@ class MovementSource(Source):
         #print sz
         self.timedata = np.empty(sz,np.dtype(np.float))
         self.xdata = np.empty((sz,2),np.dtype(np.float))
-        self.name = fn
         self.axis = axis
         for i in range(sz):
             (timestamp,ms,xv,xd,yv,yd,zv,zd) = lines[i].split()
             self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(int(timestamp))
                                         + datetime.timedelta(seconds = float("0."+ms)))
             if axis==0:
+                self.name = fn + "  X-Axis"
                 self.xdata[i,0] = float(xv)
                 self.xdata[i,1] = float(xd)
             elif axis==1:
+                self.name = fn + "  Y-Axis"
                 self.xdata[i,0] = float(yv)
                 self.xdata[i,1] = float(yd)
             elif axis==2:
+                self.name = fn + "  Z-Axis"
                 self.xdata[i,0] = float(zv)
                 self.xdata[i,1] = float(zd)
     def getX(self,sampled=True):
