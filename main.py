@@ -487,13 +487,10 @@ class LoadSourceDialog(gtk.Dialog):
         if self.opt_movement.get_active():
             if self.opt_axis_x.get_active():
                 axis = 0 
-                fn = fn 
             elif self.opt_axis_y.get_active():
                 axis = 1
-                fn = fn 
             else:
                 axis = 2
-                fn = fn 
             return MovementSource(fn,axis)
         else:
             offset = self.date_entry.get_datetime()
