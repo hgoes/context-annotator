@@ -376,8 +376,8 @@ class Application(gtk.Window):
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             try:
-                src = dialog.get_source()
-                self.annotator.add_source(src)
+                for src in dialog.get_source():
+                    self.annotator.add_source(src)
             except Exception as e:
                 warning = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
                                             buttons=gtk.BUTTONS_OK,
@@ -451,9 +451,9 @@ class LoadSourceDialog(gtk.Dialog):
         lbl_axis = gtk.Label()
         lbl_axis.set_markup(_("Axis")+":")
         lbl_axis.set_alignment(0.0,0.5)
-        self.opt_axis_x = gtk.RadioButton(label=_("X-Axis"))
-        self.opt_axis_y = gtk.RadioButton(group=self.opt_axis_x,label=_("Y-Axis"))
-        self.opt_axis_z = gtk.RadioButton(group=self.opt_axis_y,label=_("Z-Axis"))
+        self.opt_axis_x = gtk.CheckButton(label=_("X-Axis"))
+        self.opt_axis_y = gtk.CheckButton(label=_("Y-Axis"))
+        self.opt_axis_z = gtk.CheckButton(label=_("Z-Axis"))
         self.box_movement.attach(lbl_axis,0,1,0,1,gtk.SHRINK|gtk.FILL)
         self.box_movement.attach(self.opt_axis_x,1,2,0,1)
         self.box_movement.attach(self.opt_axis_y,1,2,1,2)
@@ -482,19 +482,21 @@ class LoadSourceDialog(gtk.Dialog):
             self.box_audio.set_sensitive(True)
     def get_source(self):
         fn = self.openw.get_filename()
+        src_list =  []
         if fn is None:
             return None
         if self.opt_movement.get_active():
             if self.opt_axis_x.get_active():
-                axis = 0 
-            elif self.opt_axis_y.get_active():
-                axis = 1
-            else:
-                axis = 2
-            return MovementSource(fn,axis)
+                src_list.append(MovementSource(fn,0))
+            if self.opt_axis_y.get_active():
+                src_list.append(MovementSource(fn,1))
+            if self.opt_axis_y.get_active():
+                src_list.append(MovementSource(fn,2))
+            return src_list
         else:
             offset = self.date_entry.get_datetime()
-            return SoundSource(fn,offset)
+            src_list.append(SoundSource(fn,offset))
+            return src_list
 
 if __name__=="__main__":
     app = Application()
