@@ -326,7 +326,7 @@ class SourceReadingState:
         self.name = src.shortIdentifier()
         self.xdata = src.getX(False)
         self.ydata = src.getY(False)
-        if self.ydata.shape[0]!=0:
+        if len(self.ydata.shape)==2:
             self.ydata = self.ydata[::,0]
         self.idx = 0
     def __cmp__(self,other):
