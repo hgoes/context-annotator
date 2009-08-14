@@ -490,7 +490,7 @@ class LoadSourceDialog(gtk.Dialog):
                 src_list.append(MovementSource(fn,0))
             if self.opt_axis_y.get_active():
                 src_list.append(MovementSource(fn,1))
-            if self.opt_axis_y.get_active():
+            if self.opt_axis_z.get_active():
                 src_list.append(MovementSource(fn,2))
             return src_list
         else:
