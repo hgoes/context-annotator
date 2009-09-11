@@ -197,10 +197,10 @@ class MovementSource(Source):
         return self.fn+" Sensor "+str(self.sensor)+" "+name+"-Axis"
     def shortIdentifier(self):
         if self.axis == 0:
-            return "x"+str(self.axis)
+            return "x"+str(self.sensor)
         elif self.axis == 1:
-            return "y"+str(self.axis)
+            return "y"+str(self.sensor)
         elif self.axis == 2:
-            return "z"+str(self.axis)
+            return "z"+str(self.sensor)
     def hasCapability(self,name):
         return False

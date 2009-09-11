@@ -331,7 +331,10 @@ class SourceReadingState:
         self.idx = 0
     def __cmp__(self,other):
         if self.idx < len(self.xdata):
-            return cmp(self.xdata[self.idx],other.xdata[self.idx])
+            if other.idx < len(other.xdata):
+                return cmp(self.xdata[self.idx],other.xdata[other.idx])
+            else:
+                return 1
         else:
             return -1
     def cur(self):
