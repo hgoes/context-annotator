@@ -147,30 +147,35 @@ class MovementSource(Source):
 
     Provides sensory input data of a acceleration sensor.
     """
-    def __init__(self,fn,axis=0):
+    def __init__(self,fn,sensor=0,axis=0):
         f = open(fn,'r')
         lines = f.readlines()
         sz = len(lines)
         #print sz
         self.timedata = np.empty(sz,np.dtype(np.float))
-        self.xdata = np.empty((sz,2),np.dtype(np.float))
+        self.xdata = np.empty(sz,np.dtype(np.float))
         self.axis = axis
+        self.sensor = sensor
+        self.fn = fn
         for i in range(sz):
-            (timestamp,ms,xv,xd,yv,yd,zv,zd) = lines[i].split()
+            (timestamp,ms,x1,y1,z1,x2,y2,z2) = lines[i].split()
             self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(int(timestamp))
                                         + datetime.timedelta(seconds = float("0."+ms)))
             if axis==0:
-                self.name = fn + "  X-Axis"
-                self.xdata[i,0] = float(xv)
-                self.xdata[i,1] = float(xd)
+                if sensor==0:
+                    self.xdata[i] = float(x1)
+                else:
+                    self.xdata[i] = float(x2)
             elif axis==1:
-                self.name = fn + "  Y-Axis"
-                self.xdata[i,0] = float(yv)
-                self.xdata[i,1] = float(yd)
+                if sensor==0:
+                    self.xdata[i] = float(y1)
+                else:
+                    self.xdata[i] = float(y2)
             elif axis==2:
-                self.name = fn + "  Z-Axis"
-                self.xdata[i,0] = float(zv)
-                self.xdata[i,1] = float(zd)
+                if sensor==0:
+                    self.xdata[i] = float(z1)
+                else:
+                    self.xdata[i] = float(z2)
     def getX(self,sampled=True):
         return self.timedata
     def getY(self,sampled=True):
@@ -183,13 +188,19 @@ class MovementSource(Source):
     def yBounds(self):
         return (self.xdata.min(),self.xdata.max())
     def getName(self):
-        return self.name
+        if self.axis==0:
+            name = "X"
+        elif self.axis==1:
+            name = "Y"
+        elif self.axis==2:
+            name = "Z"
+        return self.fn+" Sensor "+str(self.sensor)+" "+name+"-Axis"
     def shortIdentifier(self):
         if self.axis == 0:
-            return "x"
+            return "x"+str(self.axis)
         elif self.axis == 1:
-            return "y"
+            return "y"+str(self.axis)
         elif self.axis == 2:
-            return "z"
+            return "z"+str(self.axis)
     def hasCapability(self,name):
         return False

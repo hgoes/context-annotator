@@ -451,13 +451,21 @@ class LoadSourceDialog(gtk.Dialog):
         lbl_axis = gtk.Label()
         lbl_axis.set_markup(_("Axis")+":")
         lbl_axis.set_alignment(0.0,0.5)
-        self.opt_axis_x = gtk.CheckButton(label=_("X-Axis"))
-        self.opt_axis_y = gtk.CheckButton(label=_("Y-Axis"))
-        self.opt_axis_z = gtk.CheckButton(label=_("Z-Axis"))
+        self.opt_axes = [gtk.CheckButton(label=_("X-Axis")),
+                         gtk.CheckButton(label=_("Y-Axis")),
+                         gtk.CheckButton(label=_("Z-Axis"))]
+        lbl_sens = gtk.Label()
+        lbl_sens.set_markup(_("Sensor")+":")
+        lbl_sens.set_alignment(0.0,0.5)
+        self.opt_sens = [gtk.CheckButton(label=_("Sensor 1")),
+                         gtk.CheckButton(label=_("Sensor 2"))]
         self.box_movement.attach(lbl_axis,0,1,0,1,gtk.SHRINK|gtk.FILL)
-        self.box_movement.attach(self.opt_axis_x,1,2,0,1)
-        self.box_movement.attach(self.opt_axis_y,1,2,1,2)
-        self.box_movement.attach(self.opt_axis_z,1,2,2,3)
+        self.box_movement.attach(self.opt_axes[0],1,2,0,1)
+        self.box_movement.attach(self.opt_axes[1],1,2,1,2)
+        self.box_movement.attach(self.opt_axes[2],1,2,2,3)
+        self.box_movement.attach(lbl_sens,0,1,3,4,gtk.SHRINK|gtk.FILL)
+        self.box_movement.attach(self.opt_sens[0],1,2,3,4)
+        self.box_movement.attach(self.opt_sens[1],1,2,4,5)
 
         table.attach(lbl_file,0,1,0,1,gtk.SHRINK|gtk.FILL)
         table.attach(self.openw,1,2,0,1)
@@ -486,12 +494,10 @@ class LoadSourceDialog(gtk.Dialog):
         if fn is None:
             return None
         if self.opt_movement.get_active():
-            if self.opt_axis_x.get_active():
-                src_list.append(MovementSource(fn,0))
-            if self.opt_axis_y.get_active():
-                src_list.append(MovementSource(fn,1))
-            if self.opt_axis_z.get_active():
-                src_list.append(MovementSource(fn,2))
+            for axis in range(3):
+                for sens in range(2):
+                    if self.opt_axes[axis].get_active() and self.opt_sens[sens].get_active():
+                        src_list.append(MovementSource(fn,sens,axis))
             return src_list
         else:
             offset = self.date_entry.get_datetime()
