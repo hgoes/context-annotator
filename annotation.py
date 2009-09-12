@@ -9,6 +9,8 @@ import heapq
 import copy
 from matplotlib.dates import date2num,num2date
 from timezone import UTC
+from colorsel import Colors
+from matplotlib.colors import rgb2hex
 
 class AnnotationsMeta(gobject.GObjectMeta):
     def __init__(cls,*kwds):
@@ -75,7 +77,7 @@ class Annotations(gobject.GObject):
         self.__contexts = dict()
         self.__annotations = dict()
         self.__counter = 0
-        self.__colors = ['red','green','yellow','orange']
+        self.__colors = Colors()
     def add_annotation(self,ctx,boundl,boundr):
         """
         :param ctx: The context name
@@ -127,15 +129,17 @@ class Annotations(gobject.GObject):
             (color,entries) = self.__contexts[ctx]
             return color
     def free_color(self):
-        for col in self.__colors:
-            avail = True
-            for (ccol,entries) in self.__contexts.itervalues():
-                if ccol == col:
-                    avail = False
-                    break
-            if avail:
-                return col
-        return None
+        return rgb2hex(self.__colors.next())
+    #def free_color(self):
+    #    for col in self.__colors:
+    #        avail = True
+    #        for (ccol,entries) in self.__contexts.itervalues():
+    #            if ccol == col:
+    #                avail = False
+    #                break
+    #        if avail:
+    #            return col
+    #    return None
     def remove_context(self,ctx):
         """
         :param ctx: The name of the context
