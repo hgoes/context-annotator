@@ -7,6 +7,7 @@ import calendar
 import datetime
 import heapq
 import copy
+import numpy as np
 from matplotlib.dates import date2num,num2date
 from timezone import UTC
 from colorsel import Colors
@@ -320,7 +321,12 @@ class Annotations(gobject.GObject):
                 h.write("\t")
                 h.write(source_state[0].name)
                 h.write("\t")
-                h.write(str(ak[1]))
+                if ak[1].__class__ == np.ndarray:
+                    for v in ak[1]:
+                        h.write(str(v))
+                        h.write(" ")
+                else:
+                    h.write(str(ak[1]))
                 h.write("\n")
                 heapq.heapreplace(source_state,source_state[0])
             
@@ -330,8 +336,6 @@ class SourceReadingState:
         self.name = src.shortIdentifier()
         self.xdata = src.getX(False)
         self.ydata = src.getY(False)
-        if len(self.ydata.shape)==2:
-            self.ydata = self.ydata[::,0]
         self.idx = 0
     def __cmp__(self,other):
         if self.idx < len(self.xdata):

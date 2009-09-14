@@ -448,21 +448,11 @@ class LoadSourceDialog(gtk.Dialog):
         self.box_audio.attach(self.date_entry,1,2,2,3)
 
         self.box_movement = gtk.Table(1,3)
-        lbl_axis = gtk.Label()
-        lbl_axis.set_markup(_("Axis")+":")
-        lbl_axis.set_alignment(0.0,0.5)
-        self.opt_axes = [gtk.CheckButton(label=_("X-Axis")),
-                         gtk.CheckButton(label=_("Y-Axis")),
-                         gtk.CheckButton(label=_("Z-Axis"))]
         lbl_sens = gtk.Label()
         lbl_sens.set_markup(_("Sensor")+":")
         lbl_sens.set_alignment(0.0,0.5)
         self.opt_sens = [gtk.CheckButton(label=_("Sensor 1")),
                          gtk.CheckButton(label=_("Sensor 2"))]
-        self.box_movement.attach(lbl_axis,0,1,0,1,gtk.SHRINK|gtk.FILL)
-        self.box_movement.attach(self.opt_axes[0],1,2,0,1)
-        self.box_movement.attach(self.opt_axes[1],1,2,1,2)
-        self.box_movement.attach(self.opt_axes[2],1,2,2,3)
         self.box_movement.attach(lbl_sens,0,1,3,4,gtk.SHRINK|gtk.FILL)
         self.box_movement.attach(self.opt_sens[0],1,2,3,4)
         self.box_movement.attach(self.opt_sens[1],1,2,4,5)
@@ -494,10 +484,9 @@ class LoadSourceDialog(gtk.Dialog):
         if fn is None:
             return None
         if self.opt_movement.get_active():
-            for axis in range(3):
-                for sens in range(2):
-                    if self.opt_axes[axis].get_active() and self.opt_sens[sens].get_active():
-                        src_list.append(MovementSource(fn,sens,axis))
+            for sens in range(2):
+                if self.opt_sens[sens].get_active():
+                    src_list.append(MovementSource(fn,sens))
             return src_list
         else:
             offset = self.date_entry.get_datetime()
