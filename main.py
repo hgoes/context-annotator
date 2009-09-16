@@ -375,6 +375,7 @@ class Application(gtk.Window):
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             progress = gtk.Window(gtk.WINDOW_TOPLEVEL)
+            progress.set_parent(self)
             progress.set_decorated(False)
             progress.set_default_size(200,30)
             progress.set_transient_for(self)

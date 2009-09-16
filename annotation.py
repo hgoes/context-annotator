@@ -322,7 +322,8 @@ class ExportWriter:
                     if key in ann_state:
                         print "Deactivate ",key
                         del ann_state[key]
-                    ann_lst.pop()
+                    #ann_lst.pop()
+                    del ann_lst[0]
                 for (k,i) in ann_state.items():
                     if i < ak[0]:
                         print "Deactivate ",k
