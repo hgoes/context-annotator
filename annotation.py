@@ -8,6 +8,7 @@ import datetime
 import heapq
 import copy
 import numpy as np
+import threading
 from matplotlib.dates import date2num,num2date
 from timezone import UTC
 from colorsel import Colors
@@ -284,12 +285,30 @@ class Annotations(gobject.GObject):
                 
                 self.add_annotation(name,tstart,tend)
 
-    def export(self,fn,sources):
+    def export(self,fn,sources,cb=None,end_cb=None):
+        writer = ExportWriter(fn,sources,self.__annotations,cb,end_cb)
+        write_thread = threading.Thread(target=writer,name="export thread")
+        write_thread.start()
+
+class ExportWriter:
+    def __init__(self,fn,sources,annotations,cb,end_cb):
+        self.fn = fn
+        self.sources = sources
+        self.annotations = annotations
+        self.cb = cb
+        self.end_cb = end_cb
+    def __call__(self):
         utc = UTC()
-        with open(fn,'w') as h:
-            source_state = [SourceReadingState(src) for src in sources]
+                
+        with open(self.fn,'w') as h:
+            source_state = [SourceReadingState(src) for src in self.sources]
+            if self.cb is not None:
+                status_all = 0
+                for src in source_state:
+                    status_all += len(src.xdata)
+                status_cur = 0
             heapq.heapify(source_state)
-            ann_lst = self.__annotations.values()
+            ann_lst = self.annotations.values()
             ann_lst.sort(cmp=lambda (name1,start1,end1),(name2,start2,end2): cmp(start1,start2))
             ann_state = dict()
             
@@ -329,7 +348,11 @@ class Annotations(gobject.GObject):
                     h.write(str(ak[1]))
                 h.write("\n")
                 heapq.heapreplace(source_state,source_state[0])
-            
+                if self.cb is not None:
+                    status_cur += 1
+                    self.cb(float(status_cur)/status_all)
+        if self.end_cb is not None:
+            self.end_cb()
 
 class SourceReadingState:
     def __init__(self,src):

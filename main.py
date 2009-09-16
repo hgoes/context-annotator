@@ -9,6 +9,7 @@ Main Application
 import numpy as np
 #import matplotlib.pyplot as plt
 import gtk
+import gobject
 import datetime
 import time
 import calendar
@@ -190,8 +191,8 @@ class CtxAnnotator(gtk.VBox):
                                         message_format=str(e))
             warning.run()
             warning.destroy()
-    def export(self,fn):
-        self.annotations.export(fn,[disp.src for disp in self.displays])
+    def export(self,fn,cb=None,end_cb=None):
+        self.annotations.export(fn,[disp.src for disp in self.displays],cb,end_cb)
 
 class ScalePolicy:
     def __init__(self):
@@ -373,7 +374,15 @@ class Application(gtk.Window):
                                        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
-            self.annotator.export(dialog.get_filename())
+            progress = gtk.Window(gtk.WINDOW_TOPLEVEL)
+            progress.set_decorated(False)
+            progress.set_default_size(200,30)
+            progress.set_transient_for(self)
+            progress.set_modal(True)
+            bar = gtk.ProgressBar()
+            progress.add(bar)
+            progress.show_all()
+            self.annotator.export(dialog.get_filename(),lambda prog: gobject.idle_add(bar.set_fraction,prog),lambda: gobject.idle_add(progress.destroy))
         dialog.destroy()
     def load_source(self):
         dialog = LoadSourceDialog()
@@ -498,5 +507,6 @@ class LoadSourceDialog(gtk.Dialog):
             return src_list
 
 if __name__=="__main__":
+    gtk.gdk.threads_init()
     app = Application()
     app.run()
