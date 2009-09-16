@@ -77,9 +77,13 @@ class CtxAnnotator(gtk.VBox):
             self.scroller.hide()
             return
         max = self.xmax - self.policy.get_window()
+        self.adjustment.lower = self.xmin
+        self.adjustment.upper = max
+        if max < self.adjustment.value:
+            self.adjustment.value = max
+        if self.xmin > self.adjustment.value:
+            self.adjustment.value = self.xmin
         if self.xmin < max:
-            self.adjustment.lower = self.xmin
-            self.adjustment.upper = max
             self.scroller.show()
         else:
             self.scroller.hide()
