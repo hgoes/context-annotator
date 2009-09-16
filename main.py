@@ -14,6 +14,7 @@ import datetime
 import time
 import calendar
 import scikits.audiolab
+import threading
 from matplotlib.dates import date2num,num2date,MinuteLocator,SecondLocator,seconds,minutes,hours,weeks
 import gettext
 from dateentry import DateEdit
@@ -272,8 +273,14 @@ class SelectionMenu(gtk.Menu):
                             num2date(end,UTC()))
             self.append(play_it)
     def play_annotation(self,menu,display,start,end):
-        data = display.src.getPlayData(start,end)
-        scikits.audiolab.play(data[0],data[1])
+        job = threading.Thread(target=PlayJob(display.src.getPlayData(start,end)),name="play job")
+        job.start()
+
+class PlayJob:
+    def __init__(self,data):
+        self.data = data
+    def __call__(self):
+        scikits.audiolab.play(self.data[0],self.data[1])
 
 class AnnotationMenu(gtk.Menu):
     def __init__(self,par,sel):
