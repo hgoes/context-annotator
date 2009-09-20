@@ -49,7 +49,7 @@ class Viewing:
     def button_up(self,display,but,x,border_offset,time):
         return self
     def move(self,display,x,time):
-        self.parent.set_message(num2date(x).strftime("%c"))
+        self.parent.set_message(num2date(x).strftime("%c, %fus"))
         return self
 
 class Limited:
@@ -84,7 +84,7 @@ class Selecting(Limited):
             status = (x,self.start)
         else:
             status = (self.start,x)
-        self.parent.set_message(num2date(status[0]).strftime("%c")+" - "+num2date(status[1]).strftime("%c"))
+        self.parent.set_message(num2date(status[0]).strftime("%c, %fus")+" - "+num2date(status[1]).strftime("%c, %fus"))
         self.parent.set_selection(status)
     def button_down(self,display,but,x,border_offset,time):
         return self
@@ -129,7 +129,7 @@ class Dragging(Limited):
         x = self._limit(x)
         boundl = x-self.offset
         boundr = x-self.offset+self.width
-        self.parent.set_message(num2date(boundl).strftime("%c")+" - "+num2date(boundr).strftime("%c"))
+        self.parent.set_message(num2date(boundl).strftime("%c, %fus")+" - "+num2date(boundr).strftime("%c, %fus"))
         self.parent.model.update_annotation(self.id,boundl,boundr)
     def button_down(self,display,but,x,border_offset,time):
         return self
@@ -184,7 +184,7 @@ class Resizing(Limited):
         else:
             boundl = x-self.offset
             boundr = self.other
-        self.parent.set_message(num2date(boundl).strftime("%c")+" - "+num2date(boundr).strftime("%c"))
+        self.parent.set_message(num2date(boundl).strftime("%c, %fus")+" - "+num2date(boundr).strftime("%c, %fus"))
         self.parent.model.update_annotation(self.id,boundl,boundr)
     def move(self,display,x,time):
         self._update(x)
