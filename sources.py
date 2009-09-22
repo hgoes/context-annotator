@@ -157,9 +157,14 @@ class MovementSource(Source):
         self.sensor = sensor
         self.fn = fn
         for i in range(sz):
-            (timestamp,ms,x1,y1,z1,x2,y2,z2) = lines[i].split()
-            self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(int(timestamp))
-                                        + datetime.timedelta(seconds = float("0."+ms)))
+            splt = lines[i].split()
+            if len(splt) == 8:
+                (timestamp,ms,x1,y1,z1,x2,y2,z2) = lines[i].split()
+                self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(int(timestamp))
+                                            + datetime.timedelta(seconds = float("0."+ms)))
+            elif len(splt) == 7:
+                (timestamp,x1,y1,z1,x2,y2,z2) = lines[i].split()
+                self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(timestamp))
             if sensor==0:
                 self.xdata[i,0] = float(x1)
                 self.xdata[i,1] = float(y1)
