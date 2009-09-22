@@ -455,16 +455,16 @@ class LoadSourceDialog(gtk.Dialog):
         lbl_channel = gtk.Label()
         lbl_channel.set_markup(_("Channel")+":")
         lbl_channel.set_alignment(0.0,0.5)
-        opt_chan1 = gtk.RadioButton(label=_("Channel")+" 1")
-        opt_chan2 = gtk.RadioButton(group=opt_chan1,label=_("Channel")+" 2")
+        self.opt_chan1 = gtk.RadioButton(label=_("Channel")+" 1")
+        self.opt_chan2 = gtk.RadioButton(group=self.opt_chan1,label=_("Channel")+" 2")
         lbl_offset = gtk.Label()
         lbl_offset.set_markup(_("Offset")+":")
         lbl_offset.set_alignment(0.0,0.5)
         self.date_entry = DateEdit(show_time=True,use_24_format=True)
 
         self.box_audio.attach(lbl_channel,0,1,0,1,gtk.SHRINK|gtk.FILL)
-        self.box_audio.attach(opt_chan1,1,2,0,1)
-        self.box_audio.attach(opt_chan2,1,2,1,2)
+        self.box_audio.attach(self.opt_chan1,1,2,0,1)
+        self.box_audio.attach(self.opt_chan2,1,2,1,2)
         self.box_audio.attach(lbl_offset,0,1,2,3,gtk.SHRINK|gtk.FILL)
         self.box_audio.attach(self.date_entry,1,2,2,3)
 
@@ -488,7 +488,6 @@ class LoadSourceDialog(gtk.Dialog):
 
         #self.get_content_area().add(table)
         self.child.add(table)
-
         self.update_hide_show()
 
         self.add_buttons(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK)
@@ -512,8 +511,12 @@ class LoadSourceDialog(gtk.Dialog):
                     src_list.append(MovementSource(fn,sens))
             return src_list
         else:
+            if self.opt_chan1.get_active():
+                chan = 0
+            else:
+                chan = 1
             offset = self.date_entry.get_datetime()
-            src_list.append(SoundSource(fn,offset))
+            src_list.append(SoundSource(fn,offset,chan))
             return src_list
 
 if __name__=="__main__":
