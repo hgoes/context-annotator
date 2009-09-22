@@ -486,7 +486,8 @@ class LoadSourceDialog(gtk.Dialog):
         table.attach(self.opt_audio,1,2,3,4)
         table.attach(self.box_audio,1,2,4,5,xpadding=20)
 
-        self.get_content_area().add(table)
+        #self.get_content_area().add(table)
+        self.child.add(table)
         self.update_hide_show()
 
         self.add_buttons(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK)
