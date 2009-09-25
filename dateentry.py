@@ -319,7 +319,7 @@ class DateEdit(gtk.HBox):
         model = self.__timezone_popup.get_model()
         name = model.get_value(iter,0)
         offset = model.get_value(iter,1)
-        tz = timezone.FixedOffset(offset,name)
+        tz = timezone.FixedOffset(offset*60,name)
         #dt.tzinfo = timezone.FixedOffset(offset,name)
         return datetime.datetime(dt.year,dt.month,dt.day,dt.hour,dt.minute,dt.second,dt.microsecond,tz)
         
