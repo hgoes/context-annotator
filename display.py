@@ -43,11 +43,11 @@ class Display(FigureCanvas):
         self.__state = state
         state.connect('selection-changed',self.update_spanner)
         state.connect('selection-removed',self.remove_spanner)
-        xb = src.xBounds()
-        yb = src.yBounds()
+        xb = src.get_time_bounds()
+        yb = src.get_data_bounds()
         figure = Figure(dpi=100)
         self.plot = figure.add_subplot(111,xbound=xb,ybound=yb,autoscale_on=False)
-        self.plot.plot_date(src.getX(),src.getY(),'-')
+        self.plot.plot_date(src.get_time(True),src.get_data(True),'-')
         if state.selection is None:
             self.spanner = None
         else:

@@ -17,14 +17,20 @@ import scikits.audiolab
 import threading
 from matplotlib.dates import date2num,num2date,MinuteLocator,SecondLocator,seconds,minutes,hours,weeks
 import gettext
+
+gettext.install('context-annotator','po')
+gobject.threads_init()
+
 from dateentry import DateEdit
 from timezone import UTC
 from annotation import Annotations
 from display import Display
 from inputstate import InputState
-gettext.install('context-annotator','po')
-
-from sources import *
+from annpkg.model import *
+from annpkg.sources import all_sources
+import annpkg.gst_numpy as gst_numpy
+import src_loader_gui
+import gst
 
 class CtxAnnotator(gtk.VBox):
     def __init__(self):
@@ -98,7 +104,7 @@ class CtxAnnotator(gtk.VBox):
         xmin = None
         xmax = None
         for d in self.displays:
-            min,max = d.src.xBounds()
+            min,max = d.src.get_time_bounds()
             if xmin is None or min < xmin:
                 xmin = min
             if xmax is None or max > xmax:
@@ -123,7 +129,7 @@ class CtxAnnotator(gtk.VBox):
         cont.add(disp)
         frame.attach(cont,0,1,1,3,gtk.EXPAND|gtk.FILL,gtk.EXPAND|gtk.FILL)
         lbl = gtk.Label()
-        lbl.set_markup("<b>"+src.getName()+"</b>")
+        lbl.set_markup("<b>"+src.get_name()+"</b>")
         lbl.set_alignment(0.0,0.5)
         frame.attach(lbl,0,1,0,1,gtk.EXPAND|gtk.FILL,gtk.SHRINK|gtk.FILL)
         rem_but = gtk.Button()
@@ -182,16 +188,16 @@ class CtxAnnotator(gtk.VBox):
     def remove_annotation(self,id):
         self.annotations.remove_annotation(id)
     def write_out(self,fn):
-        self.annotations.write(fn)
+        pkg = AnnPkg([(disp.src,None) for disp in self.displays],
+                     [ann for ann in self.annotations])
+        pkg.write(fn)
     def read_in(self,fn):
-        try:
-            self.annotations.read(fn)
-        except Exception as e:
-            warning = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
-                                        buttons=gtk.BUTTONS_OK,
-                                        message_format=str(e))
-            warning.run()
-            warning.destroy()
+        pkg = AnnPkg.load(fn)
+        for (name,start,end) in pkg.annotations:
+            self.annotations.add_annotation(name,start,end)
+        for (src,anns) in pkg.sources:
+            if src is not None:
+                self.add_source(src)
     def export(self,fn,cb=None,end_cb=None):
         self.annotations.export(fn,[disp.src for disp in self.displays],cb,end_cb)
 
@@ -273,14 +279,13 @@ class SelectionMenu(gtk.Menu):
                             num2date(end,UTC()))
             self.append(play_it)
     def play_annotation(self,menu,display,start,end):
-        job = threading.Thread(target=PlayJob(display.src.getPlayData(start,end)),name="play job")
-        job.start()
-
-class PlayJob:
-    def __init__(self,data):
-        self.data = data
-    def __call__(self):
-        scikits.audiolab.play(self.data[0],self.data[1])
+        pipe = gst.Pipeline()
+        (data,rate) = display.src.getPlayData(start,end)
+        src = gst_numpy.NumpySrc(data,rate)
+        sink = gst.element_factory_make("alsasink")
+        pipe.add(src.el,sink)
+        gst.element_link_many(src.el,sink)
+        pipe.set_state(gst.STATE_PLAYING)
 
 class AnnotationMenu(gtk.Menu):
     def __init__(self,par,sel):
@@ -310,11 +315,11 @@ class Application(gtk.Window):
         save_item = gtk.ImageMenuItem(gtk.STOCK_SAVE)
         save_item.connect('activate',lambda x: self.save())
         save_item.add_accelerator('activate',accel,115,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
-        export_item = gtk.ImageMenuItem(gtk.STOCK_CONVERT)
-        export_item.connect('activate',lambda x: self.export())
+        #export_item = gtk.ImageMenuItem(gtk.STOCK_CONVERT)
+        #export_item.connect('activate',lambda x: self.export())
         file_menu.append(open_item)
         file_menu.append(save_item)
-        file_menu.append(export_item)
+        #file_menu.append(export_item)
         
         source_item = gtk.MenuItem(label=_('_Sources'))
         bar.append(source_item)
@@ -393,7 +398,7 @@ class Application(gtk.Window):
             self.annotator.export(dialog.get_filename(),lambda prog: gobject.idle_add(bar.set_fraction,prog),lambda: gobject.idle_add(progress.destroy))
         dialog.destroy()
     def load_source(self):
-        dialog = LoadSourceDialog()
+        dialog = src_loader_gui.LoadSourceDialog(all_sources)
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             try:
@@ -432,92 +437,6 @@ Public License along with this program; if not, see\n\
         dialog.set_authors(["Henning Günther <h.guenther@tu-bs.de>"])
         dialog.run()
         dialog.destroy()
-
-class LoadSourceDialog(gtk.Dialog):
-    def __init__(self):
-        gtk.Dialog.__init__(self,title=_("Load source"))
-        table = gtk.Table(5,2)
-        lbl_file = gtk.Label()
-        lbl_file.set_markup("<b>"+_("File")+":</b>")
-        lbl_file.set_alignment(0.0,0.5)
-        self.openw = gtk.FileChooserButton(title=_("Load source"))
-        
-        lbl_filetype = gtk.Label()
-        lbl_filetype.set_markup("<b>"+_("File type")+":</b>")
-        lbl_filetype.set_alignment(0.0,0.5)
-        
-        self.opt_movement = gtk.RadioButton(label=_("Movement data"))
-        self.opt_movement.connect('toggled',lambda s: self.update_hide_show())
-        self.opt_audio = gtk.RadioButton(group=self.opt_movement,label=_("Audio data"))
-        self.opt_audio.connect('toggled',lambda s: self.update_hide_show())
-        
-        self.box_audio = gtk.Table(3,2)
-        lbl_channel = gtk.Label()
-        lbl_channel.set_markup(_("Channel")+":")
-        lbl_channel.set_alignment(0.0,0.5)
-        self.opt_chan1 = gtk.RadioButton(label=_("Channel")+" 1")
-        self.opt_chan2 = gtk.RadioButton(group=self.opt_chan1,label=_("Channel")+" 2")
-        lbl_offset = gtk.Label()
-        lbl_offset.set_markup(_("Offset")+":")
-        lbl_offset.set_alignment(0.0,0.5)
-        self.date_entry = DateEdit(show_time=True,use_24_format=True)
-
-        self.box_audio.attach(lbl_channel,0,1,0,1,gtk.SHRINK|gtk.FILL)
-        self.box_audio.attach(self.opt_chan1,1,2,0,1)
-        self.box_audio.attach(self.opt_chan2,1,2,1,2)
-        self.box_audio.attach(lbl_offset,0,1,2,3,gtk.SHRINK|gtk.FILL)
-        self.box_audio.attach(self.date_entry,1,2,2,3)
-
-        self.box_movement = gtk.Table(1,3)
-        lbl_sens = gtk.Label()
-        lbl_sens.set_markup(_("Sensor")+":")
-        lbl_sens.set_alignment(0.0,0.5)
-        self.opt_sens = [gtk.CheckButton(label=_("Sensor 1")),
-                         gtk.CheckButton(label=_("Sensor 2"))]
-        self.box_movement.attach(lbl_sens,0,1,3,4,gtk.SHRINK|gtk.FILL)
-        self.box_movement.attach(self.opt_sens[0],1,2,3,4)
-        self.box_movement.attach(self.opt_sens[1],1,2,4,5)
-
-        table.attach(lbl_file,0,1,0,1,gtk.SHRINK|gtk.FILL)
-        table.attach(self.openw,1,2,0,1)
-        table.attach(lbl_filetype,0,1,1,2,gtk.SHRINK|gtk.FILL)
-        table.attach(self.opt_movement,1,2,1,2)
-        table.attach(self.box_movement,1,2,2,3,xpadding=20)
-        table.attach(self.opt_audio,1,2,3,4)
-        table.attach(self.box_audio,1,2,4,5,xpadding=20)
-
-        #self.get_content_area().add(table)
-        self.child.add(table)
-        self.update_hide_show()
-
-        self.add_buttons(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK)
-        self.show_all()
-
-    def update_hide_show(self):
-        if self.opt_movement.get_active():
-            self.box_movement.set_sensitive(True)
-            self.box_audio.set_sensitive(False)
-        else:
-            self.box_movement.set_sensitive(False)
-            self.box_audio.set_sensitive(True)
-    def get_source(self):
-        fn = self.openw.get_filename()
-        src_list =  []
-        if fn is None:
-            return None
-        if self.opt_movement.get_active():
-            for sens in range(2):
-                if self.opt_sens[sens].get_active():
-                    src_list.append(MovementSource(fn,sens))
-            return src_list
-        else:
-            if self.opt_chan1.get_active():
-                chan = 0
-            else:
-                chan = 1
-            offset = self.date_entry.get_datetime()
-            src_list.append(SoundSource(fn,offset,chan))
-            return src_list
 
 if __name__=="__main__":
     gtk.gdk.threads_init()

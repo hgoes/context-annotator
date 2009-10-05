@@ -10,6 +10,7 @@ import datetime
 from matplotlib.dates import date2num,num2date
 import wave
 from scikits.audiolab import Sndfile
+from timezone import UTC
 
 class Source:
     """ An abstract base class for all sources. """
@@ -148,6 +149,7 @@ class MovementSource(Source):
     Provides sensory input data of a acceleration sensor.
     """
     def __init__(self,fn,sensor=0):
+        utc = UTC()
         f = open(fn,'r')
         lines = f.readlines()
         sz = len(lines)
@@ -159,12 +161,12 @@ class MovementSource(Source):
         for i in range(sz):
             splt = lines[i].split()
             if len(splt) == 8:
-                (timestamp,ms,x1,y1,z1,x2,y2,z2) = lines[i].split()
-                self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(int(timestamp))
+                (timestamp,ms,x1,y1,z1,x2,y2,z2) = splt
+                self.timedata[i] = date2num(datetime.datetime.fromtimestamp(int(timestamp),utc)
                                             + datetime.timedelta(seconds = float("0."+ms)))
             elif len(splt) == 7:
-                (timestamp,x1,y1,z1,x2,y2,z2) = lines[i].split()
-                self.timedata[i] = date2num(datetime.datetime.utcfromtimestamp(float(timestamp)))
+                (timestamp,x1,y1,z1,x2,y2,z2) = splt
+                self.timedata[i] = date2num(datetime.datetime.fromtimestamp(float(timestamp),utc))
             if sensor==0:
                 self.xdata[i,0] = float(x1)
                 self.xdata[i,1] = float(y1)

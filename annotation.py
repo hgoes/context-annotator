@@ -132,16 +132,6 @@ class Annotations(gobject.GObject):
             return color
     def free_color(self):
         return rgb2hex(self.__colors.next())
-    #def free_color(self):
-    #    for col in self.__colors:
-    #        avail = True
-    #        for (ccol,entries) in self.__contexts.itervalues():
-    #            if ccol == col:
-    #                avail = False
-    #                break
-    #        if avail:
-    #            return col
-    #    return None
     def remove_context(self,ctx):
         """
         :param ctx: The name of the context
@@ -188,6 +178,8 @@ class Annotations(gobject.GObject):
         :returns: An iterator over id, color, start-time and end-time of all annotations in the model.
         :rtype: :class:`iterator`"""
         return((id,self.__contexts[ctx][0],boundl,boundr) for (id,(ctx,boundl,boundr)) in self.__annotations.iteritems())
+    def __iter__(self):
+        return self.__annotations.itervalues()
     def bounds(self):
         """
         :rtype: (:class:`float`, :class:`float`)
@@ -322,7 +314,6 @@ class ExportWriter:
                     if key in ann_state:
                         print "Deactivate ",key
                         del ann_state[key]
-                    #ann_lst.pop()
                     del ann_lst[0]
                 for (k,i) in ann_state.items():
                     if i < ak[0]:
@@ -331,7 +322,6 @@ class ExportWriter:
                 while(len(ann_lst) > 0 and ann_lst[0][1] < ak[0]):
                     print "Activate ",ann_lst[0][0]
                     ann_state[ann_lst[0][0]] = ann_lst[0][2]
-                    #ann_lst.pop()
                     del ann_lst[0]
                 cur_date = num2date(ak[0],utc)
                 h.write(str(calendar.timegm(cur_date.utctimetuple())))
