@@ -73,13 +73,20 @@ class AudioSource(Source):
         self.chans = chans
         self.offset = offset
         self.pipe = gst.Pipeline()
-        decoder = gst.element_factory_make('flacdec')
         sink = gst_numpy.NumpySink(self.new_data,self.new_attrs)
+        decoder = gst.element_factory_make('decodebin')
+        decoder.connect('new-decoded-pad',self.new_pad,sink)
         self.pipe.add(gst_el,decoder,sink.el)
-        gst.element_link_many(gst_el,decoder,sink.el)
+        gst.element_link_many(gst_el,decoder)
         self.data_avail = threading.Event()
         self.attrs_avail = threading.Event()
         self.pipe.set_state(gst.STATE_PLAYING)
+    def new_pad(self,decoder,pad,last,sink):
+        tpad = sink.el.get_pad('sink')
+        if tpad.is_linked():
+            pass
+        else:
+            pad.link(tpad)
     @staticmethod
     def from_annpkg(handle,rootname,attrs):
         fn = attrs['file'].nodeValue
