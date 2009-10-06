@@ -36,18 +36,35 @@ class NumpySrc:
         self.el = gst.element_factory_make("appsrc")
         self.arr = arr
         self.pos = 0
-        (len,chans) = arr.shape
-        self.el.set_property("size",len * chans * arr.dtype.itemsize)
+        self.rate = rate
+        dims = len(arr.shape)
+        if dims == 1:
+            l = arr.shape[0]
+            chans = 1
+        else:
+            l,chans = arr.shape
+        self.per_sample = 1000000000 / rate
+        self.fac = chans * arr.dtype.itemsize
+        self.el.set_property("size",l * chans * arr.dtype.itemsize)
+        self.el.set_property("format",gst.FORMAT_TIME)
         capstr = "audio/x-raw-int,width=%d,depth=%d,rate=%d,channels=%d,endianness=1234,signed=true"%(arr.dtype.itemsize*8,arr.dtype.itemsize*8,rate,chans)
         self.el.set_property("caps",gst.caps_from_string(capstr))
+        self.el.set_property("stream-type",1) # Seekable
         self.el.connect("need-data",self.need_data)
+        self.el.connect("seek-data",self.seek_data)
     def need_data(self,el,l):
-        if self.pos >= self.arr.nbytes:
+        if self.pos >= self.arr.shape[0]:
             el.emit("end-of-stream")
         else:
-            buf = numpy.getbuffer(self.arr,self.pos,l)
-            el.emit("push-buffer", gst.Buffer(buf))
-            self.pos += l
+            sz = 1024 * self.fac
+            buf = gst.Buffer(numpy.getbuffer(self.arr,self.pos*self.fac,1024*self.fac))
+            buf.timestamp = self.pos * self.per_sample
+            buf.duration = int(1024*self.per_sample)
+            el.emit("push-buffer", buf)
+            self.pos += 1024
+    def seek_data(self,el,npos):
+        self.pos = npos / self.per_sample
+        return True
 
 class PySrc:
     def __init__(self,obj,size=-1):

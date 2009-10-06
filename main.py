@@ -17,6 +17,7 @@ import scikits.audiolab
 import threading
 from matplotlib.dates import date2num,num2date,MinuteLocator,SecondLocator,seconds,minutes,hours,weeks
 import gettext
+import pytz
 
 gettext.install('context-annotator','po')
 gobject.threads_init()
@@ -285,7 +286,73 @@ class SelectionMenu(gtk.Menu):
         sink = gst.element_factory_make("alsasink")
         pipe.add(src.el,sink)
         gst.element_link_many(src.el,sink)
+        diff = end-start
+        len = ((diff.days * 86400 + diff.seconds) * 1000000 + diff.microseconds) * 1000
+        progress = PlayProgress(pipe,start,len)
         pipe.set_state(gst.STATE_PLAYING)
+        progress.show_all()
+        progress.start()
+
+class PlayProgress(gtk.Window,threading.Thread):
+    def __init__(self,pipe,offset,len):
+        gtk.Window.__init__(self)
+        threading.Thread.__init__(self)
+        self.set_title(_("Playing"))
+        self.connect("destroy",self.do_destroy)
+        pipe.get_bus().add_signal_watch()
+        pipe.get_bus().connect('message',self.message)
+        self.playing = threading.Event()
+        adj = gtk.Adjustment(upper=len)
+        self.scale = gtk.HScale(adj)
+        self.scale.connect("format-value",self.format)
+        self.scale.connect("change-value",self.seek)
+        self.button = gtk.Button("Pause")
+        self.button.connect("clicked",self.clicked)
+        box = gtk.HBox()
+        box.add(self.button)
+        box.add(self.scale)
+        self.add(box)
+        self.pipe = pipe
+        self.offset = offset
+        self.playing.set()
+        self.thread_active = True
+    def format(self,scale,value):
+        diff = datetime.timedelta(microseconds=value/1000)
+        return (self.offset+diff).strftime("%c, %fus")
+    def seek(self,scale,act,value):
+        self.pipe.seek_simple(gst.FORMAT_TIME,gst.SEEK_FLAG_FLUSH,value)
+    def message(self,bus,msg):
+        if msg.type == gst.MESSAGE_EOS:
+            self.pause()
+    def run(self):
+        while(self.thread_active):
+            time.sleep(0.2)
+            self.playing.wait()
+            try:
+                val = self.pipe.query_position(gst.FORMAT_TIME)[0]
+                gtk.gdk.threads_enter()
+                self.scale.set_value(val)
+                gtk.gdk.threads_leave()
+            except:
+                pass
+    def play(self):
+        self.pipe.set_state(gst.STATE_PLAYING)
+        self.playing.set()
+        self.button.set_label("Pause")
+    def pause(self):
+        self.pipe.set_state(gst.STATE_PAUSED)
+        self.playing.clear()
+        self.button.set_label("Play")
+    def clicked(self,but):
+        if self.playing.is_set():
+            self.pause()
+        else:
+            self.play()
+    def do_destroy(self,win):
+        self.pipe.set_state(gst.STATE_NULL)
+        self.pipe = None
+        self.thread_active = False
+        self.playing.set()
 
 class AnnotationMenu(gtk.Menu):
     def __init__(self,par,sel):
@@ -442,3 +509,4 @@ if __name__=="__main__":
     gtk.gdk.threads_init()
     app = Application()
     app.run()
+    print threading.enumerate()
