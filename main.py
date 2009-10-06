@@ -275,11 +275,12 @@ class SelectionMenu(gtk.Menu):
             play_it = gtk.ImageMenuItem(stock_id=gtk.STOCK_MEDIA_PLAY)
             (start,end) = par.input_state.selection
             play_it.connect('activate',self.play_annotation,
+                            par.get_parent().get_parent(),
                             display,
                             num2date(start,UTC()),
                             num2date(end,UTC()))
             self.append(play_it)
-    def play_annotation(self,menu,display,start,end):
+    def play_annotation(self,menu,window,display,start,end):
         pipe = gst.Pipeline()
         (data,rate) = display.src.getPlayData(start,end)
         src = gst_numpy.NumpySrc(data,rate)
@@ -288,14 +289,16 @@ class SelectionMenu(gtk.Menu):
         gst.element_link_many(src.el,sink)
         diff = end-start
         len = ((diff.days * 86400 + diff.seconds) * 1000000 + diff.microseconds) * 1000
-        progress = PlayProgress(pipe,start,len)
+        progress = PlayProgress(window,pipe,start,len)
         pipe.set_state(gst.STATE_PLAYING)
         progress.show_all()
         progress.start()
 
 class PlayProgress(gtk.Window,threading.Thread):
-    def __init__(self,pipe,offset,len):
+    def __init__(self,parent,pipe,offset,len):
         gtk.Window.__init__(self)
+        self.set_transient_for(parent)
+        self.set_default_size(400,80)
         threading.Thread.__init__(self)
         self.set_title(_("Playing"))
         self.connect("destroy",self.do_destroy)
@@ -309,8 +312,8 @@ class PlayProgress(gtk.Window,threading.Thread):
         self.button = gtk.Button("Pause")
         self.button.connect("clicked",self.clicked)
         box = gtk.HBox()
-        box.add(self.button)
-        box.add(self.scale)
+        box.pack_start(self.button,expand=False)
+        box.pack_start(self.scale,expand=True)
         self.add(box)
         self.pipe = pipe
         self.offset = offset
@@ -509,4 +512,3 @@ if __name__=="__main__":
     gtk.gdk.threads_init()
     app = Application()
     app.run()
-    print threading.enumerate()
