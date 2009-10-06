@@ -130,9 +130,9 @@ class AudioSource(Source):
     def get_data(self,sampled=False):
         self.data_avail.wait()
         if sampled:
-            return self.data[::self.get_skipping()]
+            return self.data[::self.get_skipping(),[x for x in self.chans]]
         else:
-            return self.data
+            return self.data[:,[x for x in self.chans]]
     def new_data(self,dat):
         self.data = dat
         self.data_avail.set()
