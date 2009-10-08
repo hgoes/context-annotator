@@ -14,7 +14,6 @@ Contents:
    datamodel
    inputstate
    display
-   sources
 
 Indices and tables
 ==================
