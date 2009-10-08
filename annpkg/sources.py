@@ -84,7 +84,7 @@ class AudioSource(Source):
     def new_pad(self,decoder,pad,last,sink):
         tpad = sink.el.get_pad('sink')
         if tpad.is_linked():
-            pass
+            print "WARNING: Stream has multiple outputs, selecting the first one"
         else:
             pad.link(tpad)
     @staticmethod
