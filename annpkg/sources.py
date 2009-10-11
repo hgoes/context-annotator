@@ -99,6 +99,11 @@ class Source:
         :rtype: :class:`bool`
         """
         return False
+    def short_name(self):
+        """
+        :returns: A one or two letter identifier for the source
+        """
+        abstract
 
 class UnknownSource(Source):
     def __init__(self,handle,rootname,attrs):
@@ -242,17 +247,21 @@ class AudioSource(Source):
         fstart = rstart.microseconds*0.000001 + rstart.seconds + rstart.days*24*3600
         fend = rend.microseconds*0.000001 + rend.seconds + rend.days*24*3600
         return (self.data[int(fstart*self.rate):int(fend*self.rate)],self.rate)
+    def short_name(self):
+        return 'a'
 
 class MovementSource(Source):
-    def __init__(self,fn,name,timedata,ydata):
+    def __init__(self,fn,name,timedata,ydata,sensor=0):
         self.fn = fn
         self.name = name
         self.timedata = timedata
         self.ydata = ydata
+        self.sensor = sensor
     @staticmethod
     def from_annpkg(handle,rootname,attrs):
         fn = attrs['file'].nodeValue
         name = attrs['name'].nodeValue
+        sensor = int(attrs['sensor'].nodeValue)
         member = handle.getmember(fn)
         lines = member.readlines()
         sz = len(lines)
@@ -264,7 +273,7 @@ class MovementSource(Source):
             ydata[i,0] = x
             ydata[i,1] = y
             ydata[i,2] = z
-        return MovementSource(fn,name,timedata,ydata)
+        return MovementSource(fn,name,timedata,ydata,sensor)
     @staticmethod
     def from_file(fn,name,sensor):
         res = {}
@@ -286,7 +295,7 @@ class MovementSource(Source):
                     res[s][1][i,0] = splt[rest + s*3]
                     res[s][1][i,1] = splt[rest + s*3 + 1]
                     res[s][1][i,2] = splt[rest + s*3 + 2]
-        return [ MovementSource(name+str(s)+".log",name+str(s),res[s][0],res[s][1]) for s in sensor ]
+        return [ MovementSource(name+str(s)+".log",name+str(s),res[s][0],res[s][1],s) for s in sensor ]
                 
     def toxml(self,root):
         el = root.createElement('movement')
@@ -306,6 +315,8 @@ class MovementSource(Source):
         return self.ydata
     def get_time(self,sampled=False):
         return self.timedata
+    def short_name(self):
+        return 'm'+str(self.sensor)
 
 all_sources = [AudioSource,MovementSource]
 

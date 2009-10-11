@@ -2,6 +2,7 @@ import tarfile
 from xml.dom import minidom
 import matplotlib.dates as dates
 import sources
+import export
 from cStringIO import StringIO
 
 class AnnPkg:
@@ -77,6 +78,10 @@ class AnnPkg:
         for (src,anns) in self.sources:
             src.put_files(handle)
         handle.close()
+    def export(self,fn,cb,end_cb):
+        thread = export.ExportWriter(fn,self.sources,self.annotations,cb,end_cb)
+        thread.start()
+        
                         
 def parse_annotations(node):
     anns = []

@@ -200,7 +200,9 @@ class CtxAnnotator(gtk.VBox):
             if src is not None:
                 self.add_source(src)
     def export(self,fn,cb=None,end_cb=None):
-        self.annotations.export(fn,[disp.src for disp in self.displays],cb,end_cb)
+        pkg = AnnPkg([(disp.src,None) for disp in self.displays],
+                     [ann for ann in self.annotations])
+        pkg.export(fn,cb,end_cb)
 
 class ScalePolicy:
     def __init__(self):
@@ -385,11 +387,11 @@ class Application(gtk.Window):
         save_item = gtk.ImageMenuItem(gtk.STOCK_SAVE)
         save_item.connect('activate',lambda x: self.save())
         save_item.add_accelerator('activate',accel,115,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
-        #export_item = gtk.ImageMenuItem(gtk.STOCK_CONVERT)
-        #export_item.connect('activate',lambda x: self.export())
+        export_item = gtk.ImageMenuItem(gtk.STOCK_CONVERT)
+        export_item.connect('activate',lambda x: self.export())
         file_menu.append(open_item)
         file_menu.append(save_item)
-        #file_menu.append(export_item)
+        file_menu.append(export_item)
         
         source_item = gtk.MenuItem(label=_('_Sources'))
         bar.append(source_item)
@@ -457,7 +459,7 @@ class Application(gtk.Window):
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             progress = gtk.Window(gtk.WINDOW_TOPLEVEL)
-            progress.set_parent(self)
+            #progress.set_parent(self)
             progress.set_decorated(False)
             progress.set_default_size(200,30)
             progress.set_transient_for(self)
