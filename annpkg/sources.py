@@ -242,9 +242,6 @@ class AudioSource(Source):
         fstart = rstart.microseconds*0.000001 + rstart.seconds + rstart.days*24*3600
         fend = rend.microseconds*0.000001 + rend.seconds + rend.days*24*3600
         return (self.data[int(fstart*self.rate):int(fend*self.rate)],self.rate)
-    def capabilities(self):
-        pass
-        #return {'play' : lambda (l,r): }
 
 class MovementSource(Source):
     def __init__(self,fn,name,timedata,ydata):
