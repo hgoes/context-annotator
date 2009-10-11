@@ -7,34 +7,86 @@ import numpy as np
 import tarfile
 from cStringIO import StringIO
 import pytz
+import xml.dom
 
 class Source:
+    """
+    An abstract source
+    """
     @staticmethod
     def from_annpkg(handle,rootname,attrs):
+        """
+        :param handle: A handle to the tar file
+        :type handle: :class:`tarfile.TarFile`
+        :param rootname: The name of the XML element that described the source in the index file
+        :type rootname: :class:`str`
+        :param attrs: The attributes of the XML element
+        :type attrs: :class:`xml.dom.NamedNodeMap`
+        :rtype: :class:`Source`
+
+        Load the source from a tar file"""
         pass
     def toxml(self,root):
+        """
+        :param root: The XML document where the source shall reside in
+        :type root: :class:`xml.dom.Document`
+        :rtype: :class:`xml.dom.Element`
+
+        Creates a XML element that describes the source"""
         abstract
     @staticmethod
     def source_type_id():
+        """
+        :returns: The name of an XML element that describes the source
+        :rtype: :class:`str`
+        """
         return ''
     @staticmethod
     def description():
+        """
+        :returns: A human readable description of the source
+        :rtype: :class:`str`
+        """
         return ""
     @staticmethod
     def arg_description():
+        """
+        :returns: A list with all the arguments the constructor of this class takes
+        :rtype: :class:`list` of (:class:`str`,:class:`str`,?)
+        """
         return []
     @staticmethod
     def from_file(fn,**args):
+        """
+        :param fn: The file from which to load the source
+        :param args: The arguments which describe the source
+        :rtype: :class:`Source`
+
+        Construct a source from a file with a dictionary of arguments """
         return []
-    def capabilities(self):
-        return {}
     def put_files(self,handle):
+        """
+        :param handle: The container file to write to
+        :type handle: :class:`tarfile.TarFile`
+        
+        Write all the data of the source into a tar file. Make sure that this function writes exactly the files that the :meth:`from_annpkg` method reads.
+        """
         abstract
     def get_name(self):
         return self.name
     def get_data_bounds(self):
+        """
+        :returns: The minimal and maximal value of the data contained in this source
+        :rtype: (:class:`float`, :class:`float`)
+
+        This defaults to iterating over all values and finding the min and max, so if you know a better method, overwrite it please!
+        """
         return (self.get_data().min(),self.get_data().max())
     def get_time_bounds(self):
+        """
+        :returns: The start- and end-time of the data in the source
+        :rtype: (:class:`float`, :class:`float`)
+        """
         time = self.get_time()
         return (time[0],time[-1])
     def finish_loading(self):
@@ -67,6 +119,14 @@ class UnknownSource(Source):
         return (0.0,0.0)
 
 class AudioSource(Source):
+    """
+    :param fn: The filename of the audio source
+    :type fn: :class:`str`
+    :param name: An informal name that identifies the source
+    :type name: :class:`str`
+    :param chans: The channels of the audio data to display
+    :type chans: :class:`set` of :class:`int`
+    """
     def __init__(self,fn,name,chans,offset,gst_el):
         self.fn = fn
         self.name = name
@@ -123,10 +183,11 @@ class AudioSource(Source):
         self.data_avail.wait()
         pipe = gst.Pipeline()
         reader = gst_numpy.NumpySrc(self.data,self.rate)
+        conv = gst.element_factory_make('audioconvert')
         encoder = gst.element_factory_make('flacenc')
         sink = gst_numpy.PySink()
-        pipe.add(reader.el,encoder,sink.el)
-        gst.element_link_many(reader.el,encoder,sink.el)
+        pipe.add(reader.el,conv,encoder,sink.el)
+        gst.element_link_many(reader.el,conv,encoder,sink.el)
         pipe.set_state(gst.STATE_PLAYING)
         buf = sink.get_data()
         inf = tarfile.TarInfo(self.fn)

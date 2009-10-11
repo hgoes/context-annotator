@@ -5,11 +5,25 @@ import sources
 from cStringIO import StringIO
 
 class AnnPkg:
+    """
+    :param sources: The sources in the package
+    :type sources: :class:`list` of :class:`annpkg.sources.Source`
+    :param anns: The annotations in the package
+
+    Represents the contents of a container file. The container file is a tar file with an index file which is encoded in XML.
+    """
     def __init__(self,sources,anns):
         self.annotations = anns
         self.sources = sources
     @staticmethod
     def load(fn):
+        """
+        :param fn: The filename from which to load the package
+        :type fn: :class:`str`
+        :returns: A new container
+        :rtype: :class:`AnnPkg`
+        
+        Loads a tar file and extracts all data from the sources """
         handle = tarfile.open(name=fn,mode='r:')
         buf = handle.extractfile('index')
         root = minidom.parse(buf).childNodes[0]
@@ -39,6 +53,10 @@ class AnnPkg:
         handle.close()
         return AnnPkg(_sources,_annotations)
     def write(self,fn):
+        """
+        :param fn: The file to write the container to
+        
+        Writes the content into a tar file """
         handle = tarfile.open(name=fn,mode='w:')
         impl = minidom.getDOMImplementation()
         root = impl.createDocument('','sensory-input',None)

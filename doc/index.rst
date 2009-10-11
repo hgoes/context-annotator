@@ -14,6 +14,7 @@ Contents:
    datamodel
    inputstate
    display
+   annpkg
 
 Indices and tables
 ==================
