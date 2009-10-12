@@ -304,7 +304,8 @@ class MovementSource(Source):
     def put_files(self,handle):
         w = StringIO()
         for i in range(len(self.ydata)):
-            print >>w,calendar.timegm(dates.num2date(self.timedata[i]).timetuple()),self.ydata[i,0],self.ydata[i,1],self.ydata[i,2]
+            stamp = dates.num2date(self.timedata[i])
+            print >>w,str(calendar.timegm(stamp.timetuple()))+stamp.strftime(".%f"),self.ydata[i,0],self.ydata[i,1],self.ydata[i,2]
         buf = w.getvalue()
         inf = tarfile.TarInfo(self.fn)
         inf.size = len(buf)
