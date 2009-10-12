@@ -200,7 +200,11 @@ class AudioSource(Source):
         inf.size = len(buf)
         handle.addfile(inf,StringIO(buf))
     def get_skipping(self):
-        return self.get_frames() / 10000
+        l = self.get_frames()
+        if l < 10000:
+            return 1
+        else:
+            return l / 10000
     def get_data(self,sampled=False):
         self.data_avail.wait()
         if sampled:
