@@ -204,7 +204,7 @@ class CtxAnnotator(gtk.VBox):
         pkg = AnnPkg([(disp.src,None) for disp in self.displays],
                      [ann for ann in self.annotations])
         pkg.export(fn,cb,end_cb)
-    def read_in(self,fn):
+    def read_annotations(self,fn):
         try:
             self.annotations.read(fn)
         except Exception as e:
@@ -474,7 +474,7 @@ class Application(gtk.Window):
                                        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
-            self.annotator.read_in(dialog.get_filename())
+            self.annotator.read_annotations(dialog.get_filename())
         dialog.destroy()
     def export(self):
         dialog = gtk.FileChooserDialog(title=_("Export annotation"),
