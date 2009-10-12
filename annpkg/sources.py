@@ -210,7 +210,11 @@ class AudioSource(Source):
         if sampled:
             return self.data[::self.get_skipping(),[x for x in self.chans]]
         else:
-            return self.data[:,[x for x in self.chans]]
+            l,chans = self.data.shape
+            if chans == len(self.chans):
+                return self.data
+            else:
+                return self.data[:,[x for x in self.chans]]
     def new_data(self,dat):
         self.data = dat
         self.data_avail.set()
@@ -235,8 +239,9 @@ class AudioSource(Source):
             skip = self.get_skipping()
         else:
             skip = 1
-        return np.fromiter([ dates.date2num(self.offset + datetime.timedelta(seconds = float(i)/rate))
-                             for i in range(0,nframes,skip)],dtype=np.dtype(np.float))
+        roffset = dates.date2num(self.offset)
+        return np.fromiter(( roffset + float(i) / rate / 86400
+                             for i in range(0,nframes,skip)),dtype=np.dtype(np.float))
     def get_time_bounds(self):
         return (dates.date2num(self.offset),dates.date2num(self.offset + datetime.timedelta(seconds = self.get_frames()/self.get_rate())))
     def finish_loading(self):

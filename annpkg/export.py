@@ -27,7 +27,6 @@ class ExportWriter(threading.Thread):
             ann_lst.sort(cmp=lambda (name1,start1,end1),(name2,start2,end2): cmp(start1,start2))
             # ann_state keeps all active annotations with the timestamp when they end
             ann_state = dict()
-            
             while len(source_state) > 0:
                 # Fetch the next data point from the sources
                 ak = source_state[0].pop()
@@ -38,9 +37,9 @@ class ExportWriter(threading.Thread):
                     continue
                 # Check for annotations that have expired
                 while(len(ann_lst) > 0 and ann_lst[0][2] < ak[0]):
-                    key = ann_lst[0][0]
-                    if key in ann_state:
-                        del ann_state[key]
+                    #key = ann_lst[0][0]
+                    #if key in ann_state:
+                    #    del ann_state[key]
                     del ann_lst[0]
                 for k,i in ann_state.items():
                     if i < ak[0]:

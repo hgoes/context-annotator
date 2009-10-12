@@ -216,7 +216,6 @@ class DateEdit(gtk.HBox):
                     return False
         return False
 
-
     def select_clicked(self, widget, data=None):
         # Temporarily grab pointer and keyboard on a window we know exists        
         if not self.popup_grab_on_window(widget.window, gtk.get_current_event_time()):

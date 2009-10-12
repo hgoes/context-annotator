@@ -79,6 +79,7 @@ class AnnPkg:
             src.put_files(handle)
         handle.close()
     def export(self,fn,cb,end_cb):
+        print "Exporting..."
         thread = export.ExportWriter(fn,self.sources,self.annotations,cb,end_cb)
         thread.start()
         
