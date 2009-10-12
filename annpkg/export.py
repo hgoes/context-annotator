@@ -38,9 +38,9 @@ class ExportWriter(threading.Thread):
                     continue
                 # Check for annotations that have expired
                 while(len(ann_lst) > 0 and ann_lst[0][2] < ak[0]):
-                    #key = ann_lst[0][0]
-                    #if key in ann_state:
-                    #    del ann_state[key]
+                    key = ann_lst[0][0]
+                    if key in ann_state:
+                        del ann_state[key]
                     del ann_lst[0]
                 for k,i in ann_state.items():
                     if i < ak[0]:
