@@ -192,6 +192,7 @@ class CtxAnnotator(gtk.VBox):
         pkg = AnnPkg([(disp.src,None) for disp in self.displays],
                      [ann for ann in self.annotations])
         pkg.write(fn)
+            
     def read_in(self,fn):
         pkg = AnnPkg.load(fn)
         for (name,start,end) in pkg.annotations:
@@ -203,6 +204,15 @@ class CtxAnnotator(gtk.VBox):
         pkg = AnnPkg([(disp.src,None) for disp in self.displays],
                      [ann for ann in self.annotations])
         pkg.export(fn,cb,end_cb)
+    def read_in(self,fn):
+        try:
+            self.annotations.read(fn)
+        except Exception as e:
+            warning = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
+                                        buttons=gtk.BUTTONS_OK,
+                                        message_format=str(e))
+            warning.run()
+            warning.destroy()
 
 class ScalePolicy:
     def __init__(self):
@@ -384,14 +394,20 @@ class Application(gtk.Window):
         open_item = gtk.ImageMenuItem(gtk.STOCK_OPEN)
         open_item.connect('activate',lambda x: self.load())
         open_item.add_accelerator('activate',accel,111,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
+        open_annotations_item = gtk.ImageMenuItem(gtk.STOCK_FIND)
+        open_annotations_item.add_accelerator('activate',accel,108,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
+        open_annotations_item.connect('activate',lambda x: self.load_annotations())
         save_item = gtk.ImageMenuItem(gtk.STOCK_SAVE)
         save_item.connect('activate',lambda x: self.save())
         save_item.add_accelerator('activate',accel,115,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
         export_item = gtk.ImageMenuItem(gtk.STOCK_CONVERT)
         export_item.connect('activate',lambda x: self.export())
+        export_item.add_accelerator('activate',accel,101,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
         file_menu.append(open_item)
+        file_menu.append(open_annotations_item)
         file_menu.append(save_item)
         file_menu.append(export_item)
+        
         
         source_item = gtk.MenuItem(label=_('_Sources'))
         bar.append(source_item)
@@ -445,6 +461,14 @@ class Application(gtk.Window):
             self.annotator.write_out(dialog.get_filename())
         dialog.destroy()
     def load(self):
+        dialog = gtk.FileChooserDialog(title=_("Load Project"),
+                                       action=gtk.FILE_CHOOSER_ACTION_OPEN,
+                                       buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            self.annotator.read_in(dialog.get_filename())
+        dialog.destroy()
+    def load_annotations(self):
         dialog = gtk.FileChooserDialog(title=_("Load annotation"),
                                        action=gtk.FILE_CHOOSER_ACTION_OPEN,
                                        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
