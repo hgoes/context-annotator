@@ -2,6 +2,7 @@ import gst
 import gst_numpy
 import threading
 import matplotlib.dates as dates
+import calendar
 import datetime
 import numpy as np
 import tarfile
@@ -262,7 +263,7 @@ class MovementSource(Source):
         fn = attrs['file'].nodeValue
         name = attrs['name'].nodeValue
         sensor = int(attrs['sensor'].nodeValue)
-        member = handle.getmember(fn)
+        member = handle.extractfile(fn)
         lines = member.readlines()
         sz = len(lines)
         timedata = np.empty(sz,np.dtype(np.float))
@@ -296,11 +297,19 @@ class MovementSource(Source):
                     res[s][1][i,1] = splt[rest + s*3 + 1]
                     res[s][1][i,2] = splt[rest + s*3 + 2]
         return [ MovementSource(name+str(s)+".log",name+str(s),res[s][0],res[s][1],s) for s in sensor ]
-                
+    def put_files(self,handle):
+        w = StringIO()
+        for i in range(len(self.ydata)):
+            print >>w,calendar.timegm(dates.num2date(self.timedata[i]).timetuple()),self.ydata[i,0],self.ydata[i,1],self.ydata[i,2]
+        buf = w.getvalue()
+        inf = tarfile.TarInfo(self.fn)
+        inf.size = len(buf)
+        handle.addfile(inf,StringIO(buf))
     def toxml(self,root):
         el = root.createElement('movement')
         el.setAttribute('name',self.get_name())
         el.setAttribute('file',self.fn)
+        el.setAttribute('sensor',str(self.sensor))
         return el
     @staticmethod
     def source_type_id():
