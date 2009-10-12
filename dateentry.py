@@ -60,7 +60,7 @@ class DateEditMeta(gobject.GObjectMeta):
 class DateEdit(gtk.HBox):
     __metaclass__ = DateEditMeta
 
-    def __init__(self, the_time = None, show_time = True, show_seconds = True, use_24_format = True):
+    def __init__(self, the_time = None, show_time = True, show_seconds = True, use_24_format = True, show_microseconds=True):
         gtk.HBox.__init__(self)
 
         # register custom signals, help can anyone explain this call parameters?
@@ -75,6 +75,7 @@ class DateEdit(gtk.HBox):
         self.__flag_use_24_format = use_24_format
         self.__flag_week_starts_monday = False
         self.__flag_show_seconds = show_seconds
+        self.__flag_show_microseconds = show_microseconds
 
         # the date entry
         self.__date_entry = gtk.Entry()
@@ -178,12 +179,18 @@ class DateEdit(gtk.HBox):
     def get_date_format(self):
         if self.__flag_use_24_format:
             if self.__flag_show_seconds:
-                return '%H:%M:%S'
+                if self.__flag_show_microseconds:
+                    return '%H:%M:%S.%f'
+                else:
+                    return '%H:%M:%S'
             else:
                 return '%H:%M'
         else:
             if self.__flag_show_seconds:
-                return '%I:%M:%S %p'
+                if self.__flag_show_microseconds:
+                    return '%I:%M:%S.%f %p'
+                else:
+                    return '%I:%M:%S %p'
             else:
                 return '%I:%M %p'
 
