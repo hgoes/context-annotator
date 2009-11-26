@@ -10,6 +10,7 @@ from cStringIO import StringIO
 import pytz
 import xml.dom
 
+
 class Source:
     """
     An abstract source
@@ -260,6 +261,114 @@ class AudioSource(Source):
     def short_name(self):
         return 'a'
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+class SpeedSource(Source):
+    def __init__(self,fn,name,timedata,ydata,sensor=0):
+        self.fn = fn
+        self.name = name
+        self.timedata = timedata
+        self.ydata = ydata
+        self.sensor = sensor
+    @staticmethod
+    def from_annpkg(handle,rootname,attrs):
+        fn = attrs['file'].nodeValue
+        name = attrs['name'].nodeValue
+        member = handle.extractfile(fn)
+        lines = member.readlines()
+        sz = len(lines)
+        timedata = np.empty(sz,np.dtype(np.float))
+        ydata = np.empty((sz,1),np.dtype(np.float))
+        for i in range(sz):
+            (timestamp,x) = lines[i].split()
+            timedata[i] = dates.date2num(datetime.datetime.fromtimestamp(float(timestamp),pytz.utc))
+            ydata[i] = x
+           
+        return SpeedSource(fn,name,timedata,ydata)
+    @staticmethod
+    def from_file(fn,name):
+        
+        #sensor=set([0])
+
+        res = {}
+              
+        with open(fn) as h:
+            lines = h.readlines()
+            sz = len(lines)
+            res = (np.empty(sz,np.dtype(np.float)),np.empty((sz),np.dtype(np.float)))
+            for i in range(sz):
+                splt = lines[i].split()
+                timedata = dates.date2num(datetime.datetime.fromtimestamp(float(splt[0]),pytz.utc))
+                res[0][i] = timedata
+                res[1][i] = splt[1]
+                    
+        return [ SpeedSource(name+".log",name,res[0],res[1])]
+    def put_files(self,handle):
+        w = StringIO()
+        for i in range(len(self.ydata)):
+            print self.ydata
+            stamp = dates.num2date(self.timedata[i])
+            print >>w,str(calendar.timegm(stamp.timetuple()))+stamp.strftime(".%f"),self.ydata[i]
+            buf = w.getvalue()
+        inf = tarfile.TarInfo(self.fn)
+        inf.size = len(buf)
+        handle.addfile(inf,StringIO(buf))
+    def toxml(self,root):
+        el = root.createElement('speed')
+        el.setAttribute('name',self.get_name())
+        el.setAttribute('file',self.fn)
+        #el.setAttribute('sensor',str(self.sensor))
+        return el
+    @staticmethod
+    def source_type_id():
+        return 'speed'
+    @staticmethod
+    def description():
+        return _("Speed data")
+    @staticmethod
+    def arg_description():
+        return []
+    def get_data(self,sampled=False):
+        return self.ydata
+    def get_time(self,sampled=False):
+        return self.timedata
+    def short_name(self):
+        return 'm'+str(self.sensor)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class MovementSource(Source):
     def __init__(self,fn,name,timedata,ydata,sensor=0):
         self.fn = fn
@@ -337,8 +446,24 @@ class MovementSource(Source):
     def short_name(self):
         return 'm'+str(self.sensor)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 all_sources = [AudioSource,MovementSource]
 
+#all_sources = [AudioSource,MovementSource,SpeedSource]
 def source_by_name(name):
     for src in all_sources:
         if src.source_type_id() == name:
