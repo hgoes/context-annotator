@@ -13,7 +13,6 @@ import gobject
 import datetime
 import time
 import calendar
-import scikits.audiolab
 import threading
 from matplotlib.dates import date2num,num2date,MinuteLocator,SecondLocator,seconds,minutes,hours,weeks
 import gettext
