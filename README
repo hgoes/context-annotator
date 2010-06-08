@@ -9,3 +9,9 @@ You need
   - gst-python
   - matplotlib
   - context-common
+
+How to run
+----------
+Set the PYTHONPATH variable so that it contains the path to your context-common installation. Then you can just execute main.py with your python interpreter. On my system that looks like this:
+
+    PYTHONPATH="../context-common" python main.py
