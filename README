@@ -1,0 +1,11 @@
+This is a tool to display and annotate large sensor data sets.
+It is developed in a research project of the TU Braunschweig.
+
+Dependencies
+------------
+You need
+  - A python interpreter
+  - pygtk
+  - gst-python
+  - matplotlib
+  - context-common
