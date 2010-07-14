@@ -454,10 +454,16 @@ class Application(gtk.Window):
     def set_message(self,state,str):
         ctx = self.status.get_context_id("coords")
         self.status.push(ctx,str)
+    def get_filter(self):
+        ff = gtk.FileFilter()
+        ff.set_name("Annotation package")
+        ff.add_pattern("*.tar")
+        return ff
     def save(self):
         dialog = gtk.FileChooserDialog(title=_("Save annotation"),
                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
                                        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_SAVE,gtk.RESPONSE_OK))
+        dialog.add_filter(self.get_filter())
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             self.annotator.write_out(dialog.get_filename())
@@ -466,6 +472,7 @@ class Application(gtk.Window):
         dialog = gtk.FileChooserDialog(title=_("Load Project"),
                                        action=gtk.FILE_CHOOSER_ACTION_OPEN,
                                        buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+        dialog.add_filter(self.get_filter())
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             self.annotator.read_in(dialog.get_filename())
