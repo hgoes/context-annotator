@@ -96,6 +96,7 @@ class CtxAnnotator(gtk.VBox):
         else:
             self.scroller.hide()
         self.adjustment.step_increment = self.policy.get_steps()
+        self.adjustment.page_increment = self.policy.get_pages()
         self.adjustment.changed()
         for d in self.displays:
             d.update_zoom(self.policy)
@@ -232,6 +233,8 @@ class ScalePolicy:
         return self.scales[self.cur][2]
     def get_steps(self):
         return self.get_window()/100
+    def get_pages(self):
+        return self.get_window()/10
     def get_bounds(self):
         if self.pos is None:
             raise ValueError()
