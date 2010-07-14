@@ -513,7 +513,7 @@ class Application(gtk.Window):
     def show_about(self):
         dialog = gtk.AboutDialog()
         dialog.set_name(_("Context Annotator"))
-        dialog.set_copyright("© 2009 Henning Günther")
+        dialog.set_copyright("© 2009-2010 Henning Günther")
         dialog.set_license(_("\
 This program is free software; you can redistribute\n\
 it and/or modify it under the terms of the GNU General\n\
