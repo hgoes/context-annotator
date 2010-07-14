@@ -355,11 +355,11 @@ class PlayProgress(gtk.Window,threading.Thread):
     def play(self):
         self.pipe.set_state(gst.STATE_PLAYING)
         self.playing.set()
-        self.button.set_label("Pause")
+        self.button.set_label(_("Pause"))
     def pause(self):
         self.pipe.set_state(gst.STATE_PAUSED)
         self.playing.clear()
-        self.button.set_label("Play")
+        self.button.set_label(_("Play"))
     def clicked(self,but):
         if self.playing.is_set():
             self.pause()

@@ -113,3 +113,9 @@ msgstr ""
 "Sie sollten ein Exemplar der GNU General Public License\n"
 "zusammen mit diesem Programm erhalten haben. Falls nicht,\n"
 "siehe <http://www.gnu.org/licenses/>."
+
+msgid "Play"
+msgstr "Abspielen"
+
+msgid "Pause"
+msgstr "Pause"
