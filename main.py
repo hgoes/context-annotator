@@ -299,8 +299,9 @@ class SelectionMenu(gtk.Menu):
         (data,rate) = display.src.getPlayData(start,end)
         src = gst_numpy.NumpySrc(data,rate)
         sink = gst.element_factory_make("alsasink")
-        pipe.add(src.el,sink)
-        gst.element_link_many(src.el,sink)
+        conv = gst.element_factory_make("audioconvert")
+        pipe.add(src.el,conv,sink)
+        gst.element_link_many(src.el,conv,sink)
         diff = end-start
         len = ((diff.days * 86400 + diff.seconds) * 1000000 + diff.microseconds) * 1000
         progress = PlayProgress(window,pipe,start,len)
