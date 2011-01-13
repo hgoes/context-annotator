@@ -28,6 +28,7 @@ from display import Display
 from inputstate import InputState
 from annpkg.model import *
 from annpkg.sources import all_sources
+from annpkg.importer import import_file
 import annpkg.gst_numpy as gst_numpy
 import src_loader_gui
 import gst
@@ -204,6 +205,13 @@ class CtxAnnotator(gtk.VBox):
         pkg = AnnPkg([(disp.src,None) for disp in self.displays],
                      [ann for ann in self.annotations])
         pkg.export(fn,cb,end_cb)
+    def importer(self,fn):
+        pkg = import_file(fn)
+        for (name,start,end) in pkg.annotations:
+            self.annotations.add_annotation(name,start,end)
+        for (src,anns) in pkg.sources:
+            if src is not None:
+                self.add_source(src)
     def read_annotations(self,fn):
         try:
             self.annotations.read(fn)
@@ -406,10 +414,13 @@ class Application(gtk.Window):
         export_item = gtk.ImageMenuItem(gtk.STOCK_CONVERT)
         export_item.connect('activate',lambda x: self.export())
         export_item.add_accelerator('activate',accel,101,gtk.gdk.CONTROL_MASK,gtk.ACCEL_VISIBLE)
+        import_item = gtk.MenuItem(_('import'))
+        import_item.connect('activate',lambda x: self.importer())
         file_menu.append(open_item)
         #file_menu.append(open_annotations_item)
         file_menu.append(save_item)
         file_menu.append(export_item)
+        file_menu.append(import_item)
         
         
         source_item = gtk.MenuItem(label=_('_Sources'))
@@ -502,6 +513,14 @@ class Application(gtk.Window):
             progress.add(bar)
             progress.show_all()
             self.annotator.export(dialog.get_filename(),lambda prog: gobject.idle_add(bar.set_fraction,prog),lambda: gobject.idle_add(progress.destroy))
+        dialog.destroy()
+    def importer(self):
+        dialog = gtk.FileChooserDialog(title=_("Import file"),
+                                       action=gtk.FILE_CHOOSER_ACTION_OPEN,
+                                       buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            self.annotator.importer(dialog.get_filename())
         dialog.destroy()
     def load_source(self):
         dialog = src_loader_gui.LoadSourceDialog(all_sources)
